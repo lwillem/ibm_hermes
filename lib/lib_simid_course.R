@@ -33,8 +33,7 @@ get_default_parameters <- function(){
 
               # school settings
               # note: we model (abstract) school contacts in our simulation
-              #num_schools            = 2,          # number of classes per age group
-              target_school_size     = 350,
+              target_school_size     = 350,   # one class per age group in each school
               target_school_ages     = c(3:18),
               
               # social contact parameters
@@ -43,10 +42,11 @@ get_default_parameters <- function(){
               contact_prob_school        = 0.5,  # probability for an "effective contact" at school 
               contact_prob_workplace     = 0.1,  # probability for an "effective contact" at work 
               
-              #num_workplaces = 100,
+              # workplace settings
               target_workplace_size = 10,
               target_workplace_ages = c(19:65),
               
+              # random number generator settings
               rng_seed = 2020,
               
               #  visualisation parameters
@@ -113,6 +113,10 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
                              num_days_infected     = 7,        # average number of days individuals are infected/infectious   
                              transmission_prob     = 0.1,      # transmission probability per social contact                  
                              
+                             # mortality parameters, by age
+                             general_mortality_rate = c(rep(0,60),seq(0,0.01,length = 30)),
+                             disease_mortality_rate = c(rep(0.01,60),seq(0.01,0.7,length = 30)),
+                             
                              # visualisation parameters
                              bool_show_demographics = TRUE,    # option to show the demography figures
                              add_baseline           = FALSE,   # option to add the prevalence with default param
@@ -169,7 +173,7 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
   transmission_prob_school       <- contact_prob_school    * transmission_prob
   transmission_prob_workplace    <- contact_prob_workplace * transmission_prob
     
-  # set vaccine coverage
+  # set vaccine coverage (= fully protected)
   id_vaccinated                  <- sample(pop_size,pop_size*vaccine_coverage)
   pop_data$health[id_vaccinated] <- 'V'
   
@@ -182,9 +186,14 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
   recovery_rate        <- 1/num_days_infected
   recovery_probability <- 1-exp(-recovery_rate)      # convert rate to probability
   
+  # set general mortality probability
+  general_mortality_probability <- 1-exp(-general_mortality_rate)      # convert rate to probability
+  
+  # set disease-related mortality probability
+  disease_mortality_probability <- 1-exp(-disease_mortality_rate)      # convert rate to probability
+  
   # create matrix to log health states: one row per individual, one column per time step
   log_pop_data  <- matrix(NA,nrow=pop_size,ncol=num_days)
-  
   
   ####################################### #
   # RUN THE MODEL        ----
@@ -239,13 +248,20 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
       pop_data$time_of_infection[flag_new_infection]    <- day_i
       pop_data$secondary_cases[p]                       <- pop_data$secondary_cases[p] + sum(flag_new_infection)
       pop_data$generation_interval[flag_new_infection]  <- day_i - pop_data$time_of_infection[p]
+    
     }
     
     # step 5: identify newly recovered individuals
     new_recovered <- boolean_infected & rbinom(pop_size, size = 1, prob = recovery_probability)
     pop_data$health[new_recovered] <- 'R'
     
-    # step 6: log population health states
+    # step 6: identify newly deaths (can overrule recovery)
+    pop_mortality_probability <- general_mortality_probability[pop_data$age] + 
+                                  boolean_infected * disease_mortality_probability[pop_data$age]
+    new_deaths <- rbinom(pop_size, size = 1, prob = pop_mortality_probability) == 1
+    pop_data$health[new_deaths] <- 'D'
+    
+    # step 7: log population health states
     log_pop_data[,day_i] <- pop_data$health
     
   } # end for-loop for each day
@@ -259,7 +275,8 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
   log_i <- colSums(log_pop_data == 'I')  / pop_size
   log_r <- colSums(log_pop_data == 'R')  / pop_size
   log_v <- colSums(log_pop_data == 'V')  / pop_size
-  
+  log_d <- colSums(log_pop_data == 'D')  / pop_size
+
   if(return_prevelance){
     return(data.frame(log_i=log_i,log_r=log_r))
   }
@@ -274,14 +291,16 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
        type='l',
        xlab='Time (days)',
        ylab='Population fraction',
-       main='location-specific IBM',
+      # main='location-specific IBM',
        ylim=c(0,1),
        lwd=2)
   lines(log_i,  col=2,lwd=2)
   lines(log_r,  col=3,lwd=2)
   lines(log_v,  col=4,lwd=2)
+  lines(log_d,  col=5,lwd=2)
   
-  legend('top',legend=c('S','I','R','V'),col=1:4,lwd=2,ncol=2,cex=0.7,bg='white')
+  legend('top',legend=c('S','I','R','V','D'),col=1:5,lwd=2,ncol=5,cex=0.7,bg='white',
+         inset = c(0, -0.55), xpd = NA) # push legend above the plot)
   
   if(add_baseline){
     out_baseline <- run_ibm_location(rng_seed=rng_seed, return_prevelance = T, bool_show_demographics=F)
