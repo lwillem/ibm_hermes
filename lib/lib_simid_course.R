@@ -17,6 +17,9 @@
 # Copyright (C) 2026 lwillem, SIMID, UNIVERSITY OF ANTWERP, BELGIUM
 ############################################################################ #
 
+
+library(progress)
+
 # load the default parameters into the global environment (for development)
 get_default_parameters <- function(){
   
@@ -187,9 +190,16 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
   # RUN THE MODEL        ----
   ####################################### #
   
+  # init progress bar
+  pb <- progress_bar$new(format = "  run all days [:bar] :percent eta: :eta",
+                         total = num_days, clear = FALSE, width= 60)
+  
   # LOOP OVER ALL DAYS
   for(day_i in 1:num_days)
   {
+    
+    # advance progress bar
+    pb$tick()
     
     # step 2: identify infected individuals
     boolean_infected <- pop_data$health == 'I'   # = boolean TRUE/FALSE
