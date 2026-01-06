@@ -17,18 +17,23 @@
 # Copyright (C) 2026 lwillem, SIMID, UNIVERSITY OF ANTWERP, BELGIUM
 ############################################################################ #
 
+# clear workspace
+rm(list = ls())
+
 # load script with functions
 source('./lib/lib_simid_course.R')
 
-# load default parameters
-get_default_parameters()
-
-# test the creation of a population
-pop <- create_population_matrix(pop_size =  2000, 
-                                num_schools = num_schools,
-                                target_school_ages = target_school_ages,
-                                num_workplaces =  num_workplaces,
-                                bool_show_demographics = TRUE)
+# # load default parameters
+# get_default_parameters()
+# 
+# # test the creation of a population
+# pop <- create_population_matrix(pop_size =  1000,
+#                                 target_school_size = target_school_size,
+#                                 target_school_ages = target_school_ages,
+#                                 target_workplace_size =  target_workplace_size,
+#                                 target_workplace_ages =  target_workplace_ages,
+#                                 bool_show_demographics = TRUE)
+# dim(pop)
 
 # run the IBM
 run_ibm_location(pop_size = 2000,

@@ -16,32 +16,22 @@
 #
 # Copyright (C) 2026 lwillem, SIMID, UNIVERSITY OF ANTWERP, BELGIUM
 ############################################################################ #
-#
-# FUNCTION TO VISUALISE THE POPULATION IN THE RANDOM WALK TUTORIAL
-#
-############################################################################ #
 
+# load the default parameters into the global environment (for development)
 get_default_parameters <- function(){
   
   attach(list(pop_size = 1000,  # population size
               num_days = 50,    # time horizon
               num_infected_seeds = 3, # initial infections
               vaccine_coverage = 0.1, # vaccine state
-              apply_spatial_vaccine_refusal  = TRUE, # are vaccine states randomly distributed
-              
-              area_size = 20,     # geo-spatial settings
-              max_velocity = 0,
               
               num_days_infected  = 7, # disease parameter
               transmission_prob  = 0.1, # transmission dynamics
-              target_num_contacts_day = 10, 
-              max_contact_distance = 2,
-              
-              plot_time_delay  = 0.1,
-              
+
               # school settings
               # note: we model (abstract) school contacts in our simulation
-              num_schools            = 2,          # number of classes per age group
+              #num_schools            = 2,          # number of classes per age group
+              target_school_size     = 350,
               target_school_ages     = c(3:18),
               
               # social contact parameters
@@ -50,7 +40,9 @@ get_default_parameters <- function(){
               contact_prob_school        = 0.5,  # probability for an "effective contact" at school 
               contact_prob_workplace     = 0.1,  # probability for an "effective contact" at work 
               
-              num_workplaces = 100,
+              #num_workplaces = 100,
+              target_workplace_size = 10,
+              target_workplace_ages = c(19:65),
               
               rng_seed = 2020,
               
@@ -60,10 +52,9 @@ get_default_parameters <- function(){
               return_prevelance       = FALSE,  # option to return the prevalence (and stop)
               bool_single_plot        = TRUE    # option to specify the plot layout using sub-panels (or not)
               ))
-  
-  
 }
 
+# function to print the model results
 print_model_results <- function(log_i,log_r,time_start,out_baseline=NA){
   
   add_baseline <- !any(is.na(out_baseline))
@@ -94,35 +85,7 @@ print_model_results <- function(log_i,log_r,time_start,out_baseline=NA){
   
 }
 
-#' @title Calculate the social contact probability
-#'
-#' @description  This function calculates the social contact probability based on
-#' the average number of contacts per time step and the number of possible
-#' social contacts at this time step.
-#'
-#' @note The maximum probability is limited to 0.95 (arbitrary choice)
-#'
-#' @param average_num_contacts   the average number of contacts per time step
-#' @param num_possible_contacts  the number of possible contacts at this time step
-#'
-#' @keywords external
-#' @export
-get_contact_probability <- function(average_num_contacts,num_possible_contacts)
-{
-
-  # calculate the probability as the 'average' / 'possible'
-  contact_probability <- average_num_contacts / num_possible_contacts
-
-  # limit the probability to '0.95'
-  if(contact_probability >= 1) {
-    contact_probability <- 0.95
-  }
-
-  # return the probability
-  return(contact_probability)
-
-}
-
+# function to run the individual-based model based on social contact locations
 run_ibm_location <- function(pop_size              = 2000,     # population size                         
                              num_days              = 50,       # number of days to simulate (time step = one day) 
                              num_infected_seeds    = 3,        # initial number of infected individuals   
@@ -130,11 +93,12 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
                              rng_seed              = as.numeric(format(Sys.time(),'%S')), # random number seed = current time (seconds)
                              
                              # schools =  number of classes per age group
-                             num_schools            = 2,         
+                             target_school_size     = 350,
                              target_school_ages     = c(3:18),
                              
                              # workplaces = total number of workplaces
-                             num_workplaces         = 150,
+                             target_workplace_size = 10,
+                             target_workplace_ages = 18:65,
                              
                              # social contact parameters
                              num_contacts_community_day = 4,    # average number of "effective contacts" per day in the general community 
@@ -162,10 +126,10 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
     return(NULL)
   }
 
-  if(any(c(pop_size,num_days,num_infected_seeds,vaccine_coverage,num_schools,
-           target_school_ages,num_workplaces,num_contacts_community_day,
-           contact_prob_household,contact_prob_school,contact_prob_workplace,
-           num_days_infected,transmission_prob)<0)){
+  if(any(c(pop_size,num_days,num_infected_seeds,vaccine_coverage,target_school_size,
+           target_school_ages,target_workplace_size,target_workplace_ages,
+           num_contacts_community_day,contact_prob_household,contact_prob_school,
+           contact_prob_workplace,num_days_infected,transmission_prob)<0)){
     warning("ERROR: negative values not allowed as function parameter")
     return(NULL)
   }
@@ -189,8 +153,11 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
   #   - age             the age of each individual
   #   - household_id    the household index of each individual
   #   - member_id       the household member index of each individual
-  pop_data              <- create_population_matrix(pop_size, num_schools, 
-                                                    target_school_ages, num_workplaces,
+  pop_data              <- create_population_matrix(pop_size, 
+                                                    target_school_size, 
+                                                    target_school_ages, 
+                                                    target_workplace_size, 
+                                                    target_workplace_ages,
                                                     bool_show_demographics)
   # set contact and transmission parameters
   contact_prob_community         <- 1-exp(-num_contacts_community_day / pop_size)  # rate to probability
@@ -406,64 +373,62 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
 #' @keywords external
 #' @export
 #pop_size <- 1e4
-create_population_matrix <- function(pop_size, num_schools, target_school_ages, num_workplaces, bool_show_demographics = TRUE)
+create_population_matrix <- function(pop_size, 
+                                     target_school_size, 
+                                     target_school_ages, 
+                                     target_workplace_size, 
+                                     target_workplace_ages,
+                                     bool_show_demographics = TRUE)
 {
   ## demographic parameters
-  ages_adult <- 19:60
+  ages_adult <- 19:80
   ages_child <- 1:18
-  adult_age_tolerance     <- 0:5    # age tolerance between adults
+  adult_age_tolerance     <- -5:5    # age tolerance between adults
   child_age_tolerance     <- 1:4    # age tolerance between children
-  household_age_gap_min   <- 22     # min age gap between adults and youngest child
-  household_age_gap_max   <- 35     # max age gap age between adults and youngest child
+  household_age_gap       <- 22:35     # min age gap between adults and youngest child
+  
+  # start with households of size 4, with 20% extra (so we can delete some of them later)
+  #num_hh <- ceiling(pop_size / 4 * 1.20)
+  num_hh <- ceiling(pop_size / 2)
+  
+  ## create adult 1
+  pop_data_adult1 <- data.frame(age = sample(ages_adult, num_hh, replace = TRUE),
+                                hh_id = 1:num_hh,
+                                member_id = 1)
+  
+  ## create adult 2: based on age gap with adult 1
+  pop_data_adult2 <- data.frame(age = pop_data_adult1$age + sample(adult_age_tolerance, num_hh, replace = TRUE),
+                                hh_id = 1:num_hh,
+                                member_id = 2)
+  
+  ## create child 1, based on age gap with youngest parent
+  pop_data_child1 <- data.frame(age = pmax(pop_data_adult1$age,pop_data_adult2$age) - sample(household_age_gap, num_hh, replace = TRUE),
+                                hh_id = 1:num_hh,
+                                member_id = 3)
+  
+  ## create child 2: based on age gap with sibling
+  pop_data_child2 <- data.frame(age = pop_data_child1$age - sample(child_age_tolerance, num_hh, replace = TRUE),
+                                hh_id = 1:num_hh,
+                                member_id = 4)
+  
+  # combine child data
+  pop_data_child <- rbind(pop_data_child1,
+                          pop_data_child2)
+  
+  # remove child ages < 0 or above 18
+  pop_data_child <- pop_data_child[pop_data_child$age > 0  & 
+                                     pop_data_child$age < min(ages_adult),]
   
   # create the population
-  pop_data         <- NULL  # start from empty matrix
-  current_pop_size <- 0     # start from size '0'
-  hh_id            <- 1     # a counter variable to track the household id
+  pop_data         <- rbind(pop_data_adult1,
+                            pop_data_adult2,
+                            pop_data_child)  # start from empty matrix
+  dim(pop_data)
   
-  # continue as long as 'population size' < 'target population size'
-  while(current_pop_size<pop_size){
-    
-    # sample the age of adult 1
-    age_adult1 <- sample(ages_adult, 1)
-    
-    # sample the age of adult 2, given adult 1
-    age_adult2 <- sample(age_adult1 + adult_age_tolerance, 1)
-    
-    # get the possible child ages
-    ages_child_option <- min(age_adult1,age_adult2) - (household_age_gap_min:household_age_gap_max )
-    ages_child_option[!ages_child_option %in% ages_child]  <- NA
-    ages_child_option <- c(NA,ages_child_option[!is.na(ages_child_option)])
-    
-    # sample the age of child 1
-    age_child1 <- sample(ages_child_option, 1)
-    
-    # sample the age of child 2, given child 1
-    age_child2 <- sample(age_child1 + child_age_tolerance, 1)
-    
-    # aggregate all ages with the household id
-    hh_data <- data.frame(age = c(age_adult1,age_adult2,age_child1,age_child2),
-                          hh_id = hh_id)
-    
-    # remove individuals with age 'NA' or negative ages (unborn)
-    hh_data <- hh_data[!is.na(hh_data$age),]
-    hh_data <- hh_data[hh_data$age>=0,]
-    
-    # add a household member id
-    hh_data$member_id <- 1:nrow(hh_data)
-    
-    # add hh_data to pop_data
-    pop_data <- rbind(pop_data,
-                      hh_data)
-    
-    # update statistics and household counter
-    current_pop_size <- nrow(pop_data)
-    hh_id    <- hh_id + 1
-    
-  } # end while-loop
-  
-  # select all individuals within the given population size
-  pop_data <- pop_data[1:pop_size,]
+  # if needed, select all individuals within the given population size
+  if(nrow(pop_data) > pop_size){
+    pop_data <- pop_data[sample(1:nrow(pop_data),pop_size),]
+  }
   
   # add health state: susceptible
   pop_data <- data.frame(pop_data,
@@ -475,27 +440,29 @@ create_population_matrix <- function(pop_size, num_schools, target_school_ages, 
                          stringsAsFactors    = FALSE)
   
   # set school classes by age and number of schools
-  pop_data <- set_schools(pop_data, num_schools, target_school_ages)
+  num_schools <- ceiling(sum(pop_data$age %in% target_school_ages) / target_school_size)
+  pop_data    <- set_schools(pop_data, num_schools, target_school_ages)
   
   # set workplace 
+  num_workplaces <- ceiling(sum(pop_data$age %in% target_workplace_ages) / target_workplace_size)
   pop_data <- set_workplaces(pop_data, num_workplaces, target_school_ages)
   
   # option to plot demographics
   if(bool_show_demographics){
     # create a figure with 8 subplots
     par(mfrow=c(2,4))
-    hist(pop_data$age,-1:70,main='total population',xlab='age')
-    hist(pop_data$age[pop_data$member_id==1],-1:70,main='adult 1',xlab='age')
-    hist(pop_data$age[pop_data$member_id==2],-1:70,main='adult 2',xlab='age')
-    hist(pop_data$age[pop_data$member_id==3],-1:70,main='child 1',xlab='age')
-    hist(pop_data$age[pop_data$member_id==4],-1:70,main='child 2',xlab='age')
+    pop_age_max <- max(pop_data$age)
+    hist(pop_data$age,-1:pop_age_max,main='total population',xlab='age')
+    hist(pop_data$age[pop_data$member_id==1],-1:pop_age_max,main='adult 1',xlab='age')
+    hist(pop_data$age[pop_data$member_id==2],-1:pop_age_max,main='adult 2',xlab='age')
+    hist(pop_data$age[pop_data$member_id==3],-1:pop_age_max,main='child 1',xlab='age')
+    hist(pop_data$age[pop_data$member_id==4],-1:pop_age_max,main='child 2',xlab='age')
     hist(table(pop_data$hh_id),main='household size',xlab='household size')
     
     # check class and workplace size
     if(any(!is.na(pop_data$classroom_id))) hist(table(pop_data$classroom_id),xlab='Size',main='School class size')
     if(any(!is.na(pop_data$workplace_id))) hist(table(pop_data$workplace_id),xlab='Size',main='Worplace size')
   }
-  
   
   return(pop_data)
   
