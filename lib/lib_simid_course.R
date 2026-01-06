@@ -210,29 +210,26 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
     p <- ind_infected[1]
     for(p in ind_infected)
     {
-      # new infections are possible in the household and in the community
-      flag_new_infection_community <- pop_data$health == 'S' &
-        rbinom(pop_size, size = 1, prob = transmission_prob_community)
       
-      flag_new_infection_household <- pop_data$health == 'S' &
-        pop_data$hh_id[p]  == pop_data$hh_id &
-        rbinom(pop_size, size = 1, prob = transmission_prob_household)
-      
-      flag_new_infection_school    <- pop_data$health == 'S' &
-        pop_data$classroom_id[p]  == pop_data$classroom_id &
-        rbinom(pop_size, size = 1, prob = transmission_prob_school)
-      # fix NA's in the school boolean
-      flag_new_infection_school[is.na(flag_new_infection_school)] <- FALSE
-      
-      flag_new_infection_workplace    <- pop_data$health == 'S' &
-        pop_data$workplace_id[p]  == pop_data$workplace_id &
-        rbinom(pop_size, size = 1, prob = transmission_prob_workplace)
-      # fix NA's in the school boolean
-      flag_new_infection_workplace[is.na(flag_new_infection_workplace)] <- FALSE
-      
-      # aggregate booleans
-      flag_new_infection           <- flag_new_infection_household | flag_new_infection_community | flag_new_infection_school | flag_new_infection_workplace
-      
+      # new infections are possible in the community and household
+      transmission_prob_all <- (pop_data$health == 'S') * transmission_prob_community +
+                               ((pop_data$health == 'S') & pop_data$hh_id[p]  == pop_data$hh_id)  * transmission_prob_household
+
+      # add probability when in same class
+      if(!is.na(pop_data$classroom_id[p])){
+          flag_classroom <- pop_data$health == 'S' & !is.na(pop_data$classroom_id) & pop_data$classroom_id[p] == pop_data$classroom_id
+          transmission_prob_all[flag_classroom] <-  transmission_prob_all[flag_classroom] + transmission_prob_school
+      }
+
+      # add probability when at same workplace
+      if(!is.na(pop_data$workplace_id[p])){
+        flag_workplace <- pop_data$health == 'S' & !is.na(pop_data$workplace_id) & pop_data$workplace_id[p] == pop_data$workplace_id
+        transmission_prob_all[flag_workplace] <-  transmission_prob_all[flag_workplace] + transmission_prob_workplace
+      }
+
+      # sample given the obtained probability
+      flag_new_infection <- rbinom(pop_size, size = 1, prob = transmission_prob_all) == 1
+
       # mark new infected individuals
       pop_data$health[flag_new_infection] <- 'I'
       
