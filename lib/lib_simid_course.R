@@ -17,24 +17,23 @@
 # Copyright (C) 2026 lwillem, SIMID, UNIVERSITY OF ANTWERP, BELGIUM
 ############################################################################ #
 
-
-library(progress)
+# load libraries 
+library(progress) # progress bar
 
 # load the default parameters into the global environment (for development)
 get_default_parameters <- function(){
   
-  attach(list(pop_size = 1000,  # population size
-              num_days = 50,    # time horizon
+param <- list(pop_size           = 2000,  # population size
+              num_days           = 50,    # time horizon
               num_infected_seeds = 3, # initial infections
-              vaccine_coverage = 0.1, # vaccine state
+              vaccine_coverage   = 0.1, # vaccine state
               
               num_days_infected  = 7, # disease parameter
               transmission_prob  = 0.1, # transmission dynamics
 
               # school settings
-              # note: we model (abstract) school contacts in our simulation
-              target_school_size     = 350,   # one class per age group in each school
-              target_school_ages     = c(3:18),
+              target_school_size = 350,   # one class per age group in each school
+              target_school_ages = c(3:18),
               
               # social contact parameters
               num_contacts_community_day = 4,    # average number of "effective contacts" per day in the general community 
@@ -47,21 +46,27 @@ get_default_parameters <- function(){
               target_workplace_ages = c(19:65),
               
               # random number generator settings
-              rng_seed = 2020,
+              rng_seed = 2026,
+              
+              # mortality parameters, by age
+              general_mortality_rate = c(rep(0,60),seq(0,0.01,length = 30)),
+              disease_mortality_rate = c(rep(0.01,60),seq(0.01,0.7,length = 30)),
               
               #  visualisation parameters
               bool_show_demographics  = TRUE,   # option to show the demography figures (location IBM only)
-              add_baseline            = FALSE,  # option to add the prevalence with default param
-              return_prevelance       = FALSE,  # option to return the prevalence (and stop)
+              bool_add_baseline            = FALSE,  # option to add the prevalence with default param
+              bool_return_prevelance       = FALSE,  # option to return the prevalence (and stop)
               bool_single_plot        = TRUE    # option to specify the plot layout using sub-panels (or not)
-              ))
+              )
+  
+  return(param)
 }
 
 # function to print the model results
 print_model_results <- function(log_i,log_r,time_start,out_baseline=NA){
   
-  add_baseline <- !any(is.na(out_baseline))
-  if(add_baseline){
+  bool_add_baseline <- !any(is.na(out_baseline))
+  if(bool_add_baseline){
     # default epidemic characteristics
     default_ti <- paste0('   [baseline: ',round((out_baseline$log_i[length(out_baseline$log_i)] +
                                                    out_baseline$log_r[length(out_baseline$log_r)])*100,digits=0),'%]')
@@ -74,13 +79,13 @@ print_model_results <- function(log_i,log_r,time_start,out_baseline=NA){
   print('MODEL RESULTS')
   
   print(paste0('total incidence: ',round((log_i[length(log_i)] + log_r[length(log_r)])*100,digits=0),'%',
-               ifelse(add_baseline,default_ti,'')))
+               ifelse(bool_add_baseline,default_ti,'')))
   
   # print peak details
   print(paste0('Peak prevalence: ',round(max(log_i)*100,digits=0),'%',
-               ifelse(add_baseline,default_pp,'')))
+               ifelse(bool_add_baseline,default_pp,'')))
   print(paste0('Peak day:        ',which(log_i == max(log_i))[1], 
-               ifelse(add_baseline,default_pd,'')))
+               ifelse(bool_add_baseline,default_pd,'')))
   
   # print total run time
   total_time <- as.double(Sys.time() - time_start,unit='secs')
@@ -89,61 +94,26 @@ print_model_results <- function(log_i,log_r,time_start,out_baseline=NA){
 }
 
 # function to run the individual-based model based on social contact locations
-run_ibm_location <- function(pop_size              = 2000,     # population size                         
-                             num_days              = 50,       # number of days to simulate (time step = one day) 
-                             num_infected_seeds    = 3,        # initial number of infected individuals   
-                             vaccine_coverage      = 0 ,       # vaccine coverage [0,1]                
-                             rng_seed              = as.numeric(format(Sys.time(),'%S')), # random number seed = current time (seconds)
-                             
-                             # schools =  number of classes per age group
-                             target_school_size     = 350,
-                             target_school_ages     = c(3:18),
-                             
-                             # workplaces = total number of workplaces
-                             target_workplace_size = 10,
-                             target_workplace_ages = 18:65,
-                             
-                             # social contact parameters
-                             num_contacts_community_day = 4,    # average number of "effective contacts" per day in the general community 
-                             contact_prob_household     = 1,    # probability for an "effective contact" at home (1 = fully connected)
-                             contact_prob_school        = 0.5,  # probability for an "effective contact" at school 
-                             contact_prob_workplace     = 0.3,  # probability for an "effective contact" at work  
-                             
-                             # disease parameters
-                             num_days_infected     = 7,        # average number of days individuals are infected/infectious   
-                             transmission_prob     = 0.1,      # transmission probability per social contact                  
-                             
-                             # mortality parameters, by age
-                             general_mortality_rate = c(rep(0,60),seq(0,0.01,length = 30)),
-                             disease_mortality_rate = c(rep(0.01,60),seq(0.01,0.7,length = 30)),
-                             
-                             # visualisation parameters
-                             bool_show_demographics = TRUE,    # option to show the demography figures
-                             add_baseline           = FALSE,   # option to add the prevalence with default param
-                             return_prevelance      = FALSE,   # option to return the prevalence (and stop)
-                             bool_single_plot       = TRUE     # option to specify the plot layout using sub-pabels (or not)
-                             ){
+run_ibm_location <- function(param){
   
   ######################################################### #
   # DEFENSIVE CHECKS  ----
   ######################################################### #
   
-  if(num_infected_seeds > pop_size){
+  if(param$num_infected_seeds > param$pop_size){
     warning("ERROR: population size < number of infected seeds")
     return(NULL)
   }
 
-  if(any(c(pop_size,num_days,num_infected_seeds,vaccine_coverage,target_school_size,
-           target_school_ages,target_workplace_size,target_workplace_ages,
-           num_contacts_community_day,contact_prob_household,contact_prob_school,
-           contact_prob_workplace,num_days_infected,transmission_prob)<0)){
+  if(any(unlist(param[grepl('num',names(param)) | grepl('size',names(param)) |
+                        grepl('age',names(param)) | grepl('prob',names(param))]) < 0)){
     warning("ERROR: negative values not allowed as function parameter")
     return(NULL)
   }
-  
-  if(!is.logical(c(bool_show_demographics,add_baseline,return_prevelance))){
-    warning("ERROR: 'bool_show_demographics', 'add_baseline' and 'return_prevelance' should be a boolean")
-    return(NULL)
+   
+  if(!is.logical(unlist(param[grepl('bool',names(param))]))){
+    warning("ERROR: 'bool_show_demographics', 'bool_add_baseline' and 'bool_return_prevelance' should be a boolean")
+     return(NULL)
   }
   
   ######################################################### #
@@ -154,46 +124,42 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
   time_start <- Sys.time()
   
   # initialize random number generator
-  set.seed(rng_seed)
+  set.seed(param$rng_seed)
   
   # create a population matrix with:
   #   - age             the age of each individual
   #   - household_id    the household index of each individual
   #   - member_id       the household member index of each individual
-  pop_data              <- create_population_matrix(pop_size, 
-                                                    target_school_size, 
-                                                    target_school_ages, 
-                                                    target_workplace_size, 
-                                                    target_workplace_ages,
-                                                    bool_show_demographics)
+  pop_data              <- create_population_matrix(param)
+  
   # set contact and transmission parameters
-  contact_prob_community         <- 1-exp(-num_contacts_community_day / pop_size)  # rate to probability
-  transmission_prob_community    <- contact_prob_community * transmission_prob
-  transmission_prob_household    <- contact_prob_household * transmission_prob
-  transmission_prob_school       <- contact_prob_school    * transmission_prob
-  transmission_prob_workplace    <- contact_prob_workplace * transmission_prob
+  contact_prob_community         <- 1-exp(-param$num_contacts_community_day / param$pop_size)  # rate to probability
+  transmission_prob_community    <- contact_prob_community * param$transmission_prob
+  transmission_prob_household    <- param$contact_prob_household * param$transmission_prob
+  transmission_prob_school       <- param$contact_prob_school    * param$transmission_prob
+  transmission_prob_workplace    <- param$contact_prob_workplace * param$transmission_prob
     
   # set vaccine coverage (= fully protected)
-  id_vaccinated                  <- sample(pop_size,pop_size*vaccine_coverage)
+  id_vaccinated                  <- sample(param$pop_size,param$pop_size*param$vaccine_coverage)
   pop_data$health[id_vaccinated] <- 'V'
   
   # introduce infected individuals in the population
-  id_infected_seeds                             <- sample(which(pop_data$health=='S'),num_infected_seeds)
+  id_infected_seeds                             <- sample(which(pop_data$health=='S'),param$num_infected_seeds)
   pop_data$health[id_infected_seeds]            <- 'I'
   pop_data$time_of_infection[id_infected_seeds] <- 0
   
   # set recovery parameters
-  recovery_rate        <- 1/num_days_infected
+  recovery_rate        <- 1/param$num_days_infected
   recovery_probability <- 1-exp(-recovery_rate)      # convert rate to probability
   
   # set general mortality probability
-  general_mortality_probability <- 1-exp(-general_mortality_rate)      # convert rate to probability
+  general_mortality_probability <- 1-exp(-param$general_mortality_rate)      # convert rate to probability
   
   # set disease-related mortality probability
-  disease_mortality_probability <- 1-exp(-disease_mortality_rate)      # convert rate to probability
+  disease_mortality_probability <- 1-exp(-param$disease_mortality_rate)      # convert rate to probability
   
   # create matrix to log health states: one row per individual, one column per time step
-  log_pop_data  <- matrix(NA,nrow=pop_size,ncol=num_days)
+  log_pop_data  <- matrix(NA,nrow=param$pop_size,ncol=param$num_days)
   
   ####################################### #
   # RUN THE MODEL        ----
@@ -201,10 +167,10 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
   
   # init progress bar
   pb <- progress_bar$new(format = "  run all days [:bar] :percent eta: :eta",
-                         total = num_days, clear = FALSE, width= 60)
+                         total = param$num_days, clear = FALSE, width= 60)
   
   # LOOP OVER ALL DAYS
-  for(day_i in 1:num_days)
+  for(day_i in 1:param$num_days)
   {
     
     # advance progress bar
@@ -237,7 +203,7 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
       }
 
       # sample given the obtained probability
-      flag_new_infection <- rbinom(pop_size, size = 1, prob = transmission_prob_all) == 1
+      flag_new_infection <- rbinom(param$pop_size, size = 1, prob = transmission_prob_all) == 1
 
       # mark new infected individuals
       pop_data$health[flag_new_infection] <- 'I'
@@ -252,13 +218,13 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
     }
     
     # step 5: identify newly recovered individuals
-    new_recovered <- boolean_infected & rbinom(pop_size, size = 1, prob = recovery_probability)
+    new_recovered <- boolean_infected & rbinom(param$pop_size, size = 1, prob = recovery_probability)
     pop_data$health[new_recovered] <- 'R'
     
     # step 6: identify newly deaths (can overrule recovery)
     pop_mortality_probability <- general_mortality_probability[pop_data$age] + 
                                   boolean_infected * disease_mortality_probability[pop_data$age]
-    new_deaths <- rbinom(pop_size, size = 1, prob = pop_mortality_probability) == 1
+    new_deaths <- rbinom(param$pop_size, size = 1, prob = pop_mortality_probability) == 1
     pop_data$health[new_deaths] <- 'D'
     
     # step 7: log population health states
@@ -271,18 +237,18 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
   ####################################### #
   # reformat the log matrix with one row per individual and one column per time step
   # 'colSums' = sum per column
-  log_s <- colSums(log_pop_data == 'S')  / pop_size
-  log_i <- colSums(log_pop_data == 'I')  / pop_size
-  log_r <- colSums(log_pop_data == 'R')  / pop_size
-  log_v <- colSums(log_pop_data == 'V')  / pop_size
-  log_d <- colSums(log_pop_data == 'D')  / pop_size
+  log_s <- colSums(log_pop_data == 'S')  / param$pop_size
+  log_i <- colSums(log_pop_data == 'I')  / param$pop_size
+  log_r <- colSums(log_pop_data == 'R')  / param$pop_size
+  log_v <- colSums(log_pop_data == 'V')  / param$pop_size
+  log_d <- colSums(log_pop_data == 'D')  / param$pop_size
 
-  if(return_prevelance){
+  if(param$bool_return_prevelance){
     return(data.frame(log_i=log_i,log_r=log_r))
   }
   
   # change figure configuration => 4 sub-plots
-  if(bool_single_plot) {
+  if(param$bool_single_plot) {
     par(mfrow=c(2,2))
   }
   
@@ -302,8 +268,8 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
   legend('top',legend=c('S','I','R','V','D'),col=1:5,lwd=2,ncol=5,cex=0.7,bg='white',
          inset = c(0, -0.55), xpd = NA) # push legend above the plot)
   
-  if(add_baseline){
-    out_baseline <- run_ibm_location(rng_seed=rng_seed, return_prevelance = T, bool_show_demographics=F)
+  if(param$bool_add_baseline){
+    out_baseline <- run_ibm_location(rng_seed=rng_seed, bool_return_prevelance = T, bool_show_demographics=F)
     lines(out_baseline$log_i,  col=2,lwd=2,lty=2)
     legend('topright',legend=c('I (baseline)'),col=2,lwd=2,lty=3,cex=0.7,bg='white')
   } else{
@@ -319,9 +285,9 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
           ylab='secondary cases',
           main='secondary cases',
           ylim=c(0,10),
-          xlim=c(0,num_days),
+          xlim=c(0,param$num_days),
           xaxt='n')
-  axis(1,seq(0,num_days,5))
+  axis(1,seq(0,param$num_days,5))
   
   if(all(is.na(pop_data$generation_interval))){
     pop_data$generation_interval <- -1
@@ -331,9 +297,9 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
           ylab='generation interval (days)',
           main='generation interval',
           ylim=c(0,10),
-          xlim=c(0,num_days),
+          xlim=c(0,param$num_days),
           xaxt='n')
-  axis(1,seq(0,num_days,5))
+  axis(1,seq(0,param$num_days,5))
   
   ####################################### #
   # TRANSMISSION MATRIX    ----
@@ -344,11 +310,11 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
   transmission_age_matrix <- table(cut(pop_data$infector_age,age_cat,right=F),cut(pop_data$age,age_cat,right=F),dnn = list('age infector','age contact'))
   
   # create plot title with some driving parameters
-  plot_title <- paste('num_cnt_community',num_contacts_community_day,' || ',
-                      'p_cnt_household', contact_prob_household, '\n',
-                      'p_cnt_school',contact_prob_school,' || ',
-                      'p_cnt_workplace',contact_prob_workplace, '\n',
-                      'p_transmission',transmission_prob)
+  plot_title <- paste('num_cnt_community',param$num_contacts_community_day,' || ',
+                      'p_cnt_household', param$contact_prob_household, '\n',
+                      'p_cnt_school',param$contact_prob_school,' || ',
+                      'p_cnt_workplace',param$contact_prob_workplace, '\n',
+                      'p_transmission',param$transmission_prob)
   
   if(max(transmission_age_matrix)>25){
     plot_breaks <- c(0:4,seq(5,25,10),max(c(30,transmission_age_matrix)))
@@ -371,11 +337,13 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
   )
   
   print('MODEL PARAMETERS')
-  # loop over the given parameter names, if present, add name & value
-  for(i_param in all_param){
-    if(exists(i_param)){
-      print(paste0(i_param,': ',paste(get(i_param),collapse = ',')))
-    }
+  # loop over the given parameters, add name & value
+  for(i_param in names(param)){
+    p_values <- unlist(param[i_param])
+    if(length(p_values)>10){
+      p_values <- c(p_values[1:9],'...')
+    } 
+      print(paste0(i_param,': ',paste(p_values,collapse = ',')))
   }
   
   # print total incidence
@@ -399,12 +367,7 @@ run_ibm_location <- function(pop_size              = 2000,     # population size
 #' @keywords external
 #' @export
 #pop_size <- 1e4
-create_population_matrix <- function(pop_size, 
-                                     target_school_size, 
-                                     target_school_ages, 
-                                     target_workplace_size, 
-                                     target_workplace_ages,
-                                     bool_show_demographics = TRUE)
+create_population_matrix <- function(param)
 {
   ## demographic parameters
   ages_adult <- 19:80
@@ -415,7 +378,7 @@ create_population_matrix <- function(pop_size,
   
   # start with households of size 4, with 20% extra (so we can delete some of them later)
   #num_hh <- ceiling(pop_size / 4 * 1.20)
-  num_hh <- ceiling(pop_size / 2)
+  num_hh <- ceiling(param$pop_size / 2)
   
   ## create adult 1
   pop_data_adult1 <- data.frame(age = sample(ages_adult, num_hh, replace = TRUE),
@@ -452,8 +415,8 @@ create_population_matrix <- function(pop_size,
   dim(pop_data)
   
   # if needed, select all individuals within the given population size
-  if(nrow(pop_data) > pop_size){
-    pop_data <- pop_data[sample(1:nrow(pop_data),pop_size),]
+  if(nrow(pop_data) > param$pop_size){
+    pop_data <- pop_data[sample(1:nrow(pop_data),param$pop_size),]
   }
   
   # add health state: susceptible
@@ -466,15 +429,15 @@ create_population_matrix <- function(pop_size,
                          stringsAsFactors    = FALSE)
   
   # set school classes by age and number of schools
-  num_schools <- ceiling(sum(pop_data$age %in% target_school_ages) / target_school_size)
-  pop_data    <- set_schools(pop_data, num_schools, target_school_ages)
+  num_schools <- ceiling(sum(pop_data$age %in% param$target_school_ages) / param$target_school_size)
+  pop_data    <- set_schools(pop_data, num_schools, param$target_school_ages)
   
   # set workplace 
-  num_workplaces <- ceiling(sum(pop_data$age %in% target_workplace_ages) / target_workplace_size)
-  pop_data <- set_workplaces(pop_data, num_workplaces, target_school_ages)
+  num_workplaces <- ceiling(sum(pop_data$age %in% param$target_workplace_ages) / param$target_workplace_size)
+  pop_data <- set_workplaces(pop_data, num_workplaces, param$target_school_ages)
   
   # option to plot demographics
-  if(bool_show_demographics){
+  if(param$bool_show_demographics){
     # create a figure with 8 subplots
     par(mfrow=c(2,4))
     pop_age_max <- max(pop_data$age)
