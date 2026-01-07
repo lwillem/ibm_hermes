@@ -97,7 +97,7 @@ print_model_results <- function(log_i,log_r,time_start,out_baseline=NA){
 
 # help function to define whether a health state relates to susceptibility
 is_susceptible <- function(vector_health){
-  return(vector_health == 'S' | vector_health == 'Sv')
+  return(vector_health == 'S' | vector_health == 'V')
 }
 
 # function to run the individual-based model based on social contact locations
@@ -148,7 +148,7 @@ run_ibm_location <- function(param){
     
   # set vaccine coverage (= fully protected)
   id_vaccinated                  <- sample(param$pop_size,param$pop_size*param$vaccine_coverage)
-  pop_data$health[id_vaccinated] <- 'Sv'
+  pop_data$health[id_vaccinated] <- 'V'
   
   # introduce infected individuals in the population
   id_infected_seeds                             <- sample(which(pop_data$health=='S'),param$num_infected_seeds)
@@ -210,7 +210,7 @@ run_ibm_location <- function(param){
       }
 
       # account for vaccine-related protection
-      transmission_prob_all[pop_data$health == 'Sv'] <- transmission_prob_all[pop_data$health == 'Sv'] * (1 - param$vaccine_effectiveness)
+      transmission_prob_all[pop_data$health == 'V'] <- transmission_prob_all[pop_data$health == 'V'] * (1 - param$vaccine_effectiveness)
       
       # sample given the obtained probability
       flag_new_infection <- rbinom(param$pop_size, size = 1, prob = transmission_prob_all) == 1
@@ -250,7 +250,7 @@ run_ibm_location <- function(param){
   log_s <- colSums(log_pop_data == 'S')  / param$pop_size
   log_i <- colSums(log_pop_data == 'I')  / param$pop_size
   log_r <- colSums(log_pop_data == 'R')  / param$pop_size
-  log_v <- colSums(log_pop_data == 'Sv')  / param$pop_size
+  log_v <- colSums(log_pop_data == 'V')  / param$pop_size
   log_d <- colSums(log_pop_data == 'D')  / param$pop_size
 
   if(param$bool_return_prevelance){
@@ -275,7 +275,7 @@ run_ibm_location <- function(param){
   lines(log_v,  col=4,lwd=2)
   lines(log_d,  col=5,lwd=2)
   
-  legend('top',legend=c('S','I','R','Sv','D'),col=1:5,lwd=2,ncol=5,cex=0.7,bg='white',
+  legend('top',legend=c('S','I','R','V','D'),col=1:5,lwd=2,ncol=5,cex=0.7,bg='white',
          inset = c(0, -0.3), xpd = NA) # push legend above the plot)
   
   if(param$bool_add_baseline){
@@ -367,7 +367,7 @@ run_ibm_location <- function(param){
                       time_start=time_start,
                       out_baseline = out_baseline)
 
-  # set back the defaul par(mfrow)
+  # set back the default par(mfrow)
   par(mfrow=c(1,1))
 }
 
