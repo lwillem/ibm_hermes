@@ -25,19 +25,20 @@ get_default_parameters <- function(){
   
 param <- list(pop_size           = 2000,  # population size
               num_days           = 50,    # time horizon
-              num_infected_seeds = 3,     # initial infections
-              vaccine_coverage   = 0.1,   # vaccine state
+              num_infected_seeds = 3,     # initial number of infections
+              vaccine_coverage   = 0.2,   # initial proportion in vaccine state
+              vaccine_effectiveness = 0.8, # vaccine-related protection against infection
               
               num_days_infected  = 7, # disease parameter
               transmission_prob  = 0.1, # transmission dynamics
 
               # school settings
-              target_school_size = 350,   # one class per age group in each school
-              target_school_ages = c(3:18),
+              target_school_size = 350,     # one class per age group in each school
+              target_school_ages = c(3:18), # define the age groups in school
               
               # social contact parameters
               num_contacts_community_day = 4,    # average number of "effective contacts" per day in the general community 
-              contact_prob_household     = 1,    # probability for an "effective contact" at home (1 = fully connected)
+              contact_prob_household     = 0.9,  # probability for an "effective contact" at home (1 = fully connected)
               contact_prob_school        = 0.5,  # probability for an "effective contact" at school 
               contact_prob_workplace     = 0.1,  # probability for an "effective contact" at work 
               
@@ -54,8 +55,8 @@ param <- list(pop_size           = 2000,  # population size
               
               #  visualisation parameters
               bool_show_demographics  = TRUE,   # option to show the demography figures (location IBM only)
-              bool_add_baseline            = FALSE,  # option to add the prevalence with default param
-              bool_return_prevelance       = FALSE,  # option to return the prevalence (and stop)
+              bool_add_baseline       = FALSE,  # option to add the prevalence with default param
+              bool_return_prevelance  = FALSE,  # option to return the prevalence (and stop)
               bool_single_plot        = TRUE    # option to specify the plot layout using sub-panels (or not)
               )
   
@@ -91,6 +92,12 @@ print_model_results <- function(log_i,log_r,time_start,out_baseline=NA){
   total_time <- as.double(Sys.time() - time_start,unit='secs')
   print(paste0('Total run time:  ',round(total_time,digits=0),'s'))
   
+}
+
+
+# help function to define whether a health state relates to susceptibility
+is_susceptible <- function(vector_health){
+  return(vector_health == 'S' | vector_health == 'Sv')
 }
 
 # function to run the individual-based model based on social contact locations
@@ -141,7 +148,7 @@ run_ibm_location <- function(param){
     
   # set vaccine coverage (= fully protected)
   id_vaccinated                  <- sample(param$pop_size,param$pop_size*param$vaccine_coverage)
-  pop_data$health[id_vaccinated] <- 'V'
+  pop_data$health[id_vaccinated] <- 'Sv'
   
   # introduce infected individuals in the population
   id_infected_seeds                             <- sample(which(pop_data$health=='S'),param$num_infected_seeds)
@@ -187,21 +194,24 @@ run_ibm_location <- function(param){
     {
       
       # new infections are possible in the community and household
-      transmission_prob_all <- (pop_data$health == 'S') * transmission_prob_community +
-                               ((pop_data$health == 'S') & pop_data$hh_id[p]  == pop_data$hh_id)  * transmission_prob_household
+      transmission_prob_all <- is_susceptible(pop_data$health) * transmission_prob_community +
+                               (is_susceptible(pop_data$health) & pop_data$hh_id[p]  == pop_data$hh_id)  * transmission_prob_household
 
       # add probability when in same class
       if(!is.na(pop_data$classroom_id[p])){
-          flag_classroom <- pop_data$health == 'S' & !is.na(pop_data$classroom_id) & pop_data$classroom_id[p] == pop_data$classroom_id
+          flag_classroom <- is_susceptible(pop_data$health) & !is.na(pop_data$classroom_id) & pop_data$classroom_id[p] == pop_data$classroom_id
           transmission_prob_all[flag_classroom] <-  transmission_prob_all[flag_classroom] + transmission_prob_school
       }
 
       # add probability when at same workplace
       if(!is.na(pop_data$workplace_id[p])){
-        flag_workplace <- pop_data$health == 'S' & !is.na(pop_data$workplace_id) & pop_data$workplace_id[p] == pop_data$workplace_id
+        flag_workplace <- is_susceptible(pop_data$health) & !is.na(pop_data$workplace_id) & pop_data$workplace_id[p] == pop_data$workplace_id
         transmission_prob_all[flag_workplace] <-  transmission_prob_all[flag_workplace] + transmission_prob_workplace
       }
 
+      # account for vaccine-related protection
+      transmission_prob_all[pop_data$health == 'Sv'] <- transmission_prob_all[pop_data$health == 'Sv'] * (1 - param$vaccine_effectiveness)
+      
       # sample given the obtained probability
       flag_new_infection <- rbinom(param$pop_size, size = 1, prob = transmission_prob_all) == 1
 
@@ -240,7 +250,7 @@ run_ibm_location <- function(param){
   log_s <- colSums(log_pop_data == 'S')  / param$pop_size
   log_i <- colSums(log_pop_data == 'I')  / param$pop_size
   log_r <- colSums(log_pop_data == 'R')  / param$pop_size
-  log_v <- colSums(log_pop_data == 'V')  / param$pop_size
+  log_v <- colSums(log_pop_data == 'Sv')  / param$pop_size
   log_d <- colSums(log_pop_data == 'D')  / param$pop_size
 
   if(param$bool_return_prevelance){
@@ -265,15 +275,21 @@ run_ibm_location <- function(param){
   lines(log_v,  col=4,lwd=2)
   lines(log_d,  col=5,lwd=2)
   
-  legend('top',legend=c('S','I','R','V','D'),col=1:5,lwd=2,ncol=5,cex=0.7,bg='white',
-         inset = c(0, -0.55), xpd = NA) # push legend above the plot)
+  legend('top',legend=c('S','I','R','Sv','D'),col=1:5,lwd=2,ncol=5,cex=0.7,bg='white',
+         inset = c(0, -0.3), xpd = NA) # push legend above the plot)
   
   if(param$bool_add_baseline){
-    default_param <- get_default_parameters()
-    default_param$bool_add_baseline <- FALSE
+    
+    # get default parameters (and disable the 'add_baseline' option)
+    default_param                        <- get_default_parameters()
+    default_param$bool_add_baseline      <- FALSE
     default_param$bool_return_prevelance <- TRUE
     default_param$bool_show_demographics <- FALSE
+    
+    # re-run the model with default parameters
     out_baseline <- run_ibm_location(param = default_param)
+    
+    # add output to the line plot
     lines(out_baseline$log_i,  col=2,lwd=2,lty=2)
     legend('topright',legend=c('I (baseline)'),col=2,lwd=2,lty=3,cex=0.7,bg='white')
   } else{
@@ -335,13 +351,6 @@ run_ibm_location <- function(param){
                            num.digits = NA)
   
   # PRINT PARAMETERS AND RESULTS ----
-  # collect possible parameter names
-  all_param <- c('pop_size','num_days' ,'num_infected_seeds','vaccine_coverage',
-                 'rng_seed', 'num_days_infected','transmission_prob',
-                 'num_contacts_community_day','contact_prob_household','contact_prob_school','contact_prob_workplace',
-                 'num_schools','target_school_ages','num_workplaces','bool_show_demographics'
-  )
-  
   print('MODEL PARAMETERS')
   # loop over the given parameters, add name & value
   for(i_param in names(param)){
