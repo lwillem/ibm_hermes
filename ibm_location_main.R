@@ -30,6 +30,9 @@ param <- get_default_parameters()
 #pop <- create_population_matrix(param)
 #dim(pop)
 
+param$num_infected_seeds <- 10
+param$bool_add_baseline  <- TRUE
+
 # run the IBM
 run_ibm_location(param)
 

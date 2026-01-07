@@ -54,6 +54,8 @@ param <- list(pop_size           = 2000,  # population size
               
               #  visualisation parameters
               bool_show_demographics  = TRUE,   # option to show the demography figures (location IBM only)
+              bool_add_baseline            = FALSE,  # option to add the prevalence with default param
+              bool_return_prevelance       = FALSE,  # option to return the prevalence (and stop)
               bool_single_plot        = TRUE    # option to specify the plot layout using sub-panels (or not)
               )
   
@@ -61,17 +63,29 @@ param <- list(pop_size           = 2000,  # population size
 }
 
 # function to print the model results
-print_model_results <- function(log_i,log_r,time_start){
+print_model_results <- function(log_i,log_r,time_start,out_baseline=NA){
   
+  bool_add_baseline <- !any(is.na(out_baseline))
+  if(bool_add_baseline){
+    # default epidemic characteristics
+    default_ti <- paste0('   [baseline: ',round((out_baseline$log_i[length(out_baseline$log_i)] +
+                                                   out_baseline$log_r[length(out_baseline$log_r)])*100,digits=0),'%]')
+    default_pp <- paste0('   [baseline: ',round(max(out_baseline$log_i)*100,digits=0),'%]')
+    default_pd <- paste0('    [baseline: ',which(out_baseline$log_i == max(out_baseline$log_i))[1],']')
+  }
+ 
   # print total incidence
   print('-------------')
   print('MODEL RESULTS')
   
-  print(paste0('total incidence: ',round((log_i[length(log_i)] + log_r[length(log_r)])*100,digits=0),'%'))
+  print(paste0('total incidence: ',round((log_i[length(log_i)] + log_r[length(log_r)])*100,digits=0),'%',
+               ifelse(bool_add_baseline,default_ti,'')))
   
   # print peak details
-  print(paste0('Peak prevalence: ',round(max(log_i)*100,digits=0),'%'))
-  print(paste0('Peak day:        ',which(log_i == max(log_i))[1]))
+  print(paste0('Peak prevalence: ',round(max(log_i)*100,digits=0),'%',
+               ifelse(bool_add_baseline,default_pp,'')))
+  print(paste0('Peak day:        ',which(log_i == max(log_i))[1], 
+               ifelse(bool_add_baseline,default_pd,'')))
   
   # print total run time
   total_time <- as.double(Sys.time() - time_start,unit='secs')
@@ -98,7 +112,7 @@ run_ibm_location <- function(param){
   }
    
   if(!is.logical(unlist(param[grepl('bool',names(param))]))){
-    warning("ERROR: 'bool_show_demographics' should be a boolean")
+    warning("ERROR: 'bool_show_demographics', 'bool_add_baseline' and 'bool_return_prevelance' should be a boolean")
      return(NULL)
   }
   
@@ -229,6 +243,10 @@ run_ibm_location <- function(param){
   log_v <- colSums(log_pop_data == 'V')  / param$pop_size
   log_d <- colSums(log_pop_data == 'D')  / param$pop_size
 
+  if(param$bool_return_prevelance){
+    return(data.frame(log_i=log_i,log_r=log_r))
+  }
+  
   # change figure configuration => 4 sub-plots
   if(param$bool_single_plot) {
     par(mfrow=c(2,2))
@@ -249,6 +267,18 @@ run_ibm_location <- function(param){
   
   legend('top',legend=c('S','I','R','V','D'),col=1:5,lwd=2,ncol=5,cex=0.7,bg='white',
          inset = c(0, -0.55), xpd = NA) # push legend above the plot)
+  
+  if(param$bool_add_baseline){
+    default_param <- get_default_parameters()
+    default_param$bool_add_baseline <- FALSE
+    default_param$bool_return_prevelance <- TRUE
+    default_param$bool_show_demographics <- FALSE
+    out_baseline <- run_ibm_location(param = default_param)
+    lines(out_baseline$log_i,  col=2,lwd=2,lty=2)
+    legend('topright',legend=c('I (baseline)'),col=2,lwd=2,lty=3,cex=0.7,bg='white')
+  } else{
+    out_baseline <- NA
+  }
   
   if(all(is.na(pop_data$secondary_cases))){
     pop_data$secondary_cases <- -1
@@ -325,7 +355,8 @@ run_ibm_location <- function(param){
   # print total incidence
   print_model_results(log_i = log_i,
                       log_r = log_r,
-                      time_start=time_start)
+                      time_start=time_start,
+                      out_baseline = out_baseline)
 
   # set back the defaul par(mfrow)
   par(mfrow=c(1,1))
