@@ -37,7 +37,6 @@ source('lib/ibm_test.R')
 #' @param params Model parameter list.
 #'
 #' @return Named list with transmission probabilities.
-#' @keywords internal
 compute_transmission_probs <- function(params) {
 
   prob_contact_community <- 1 - exp(
@@ -55,10 +54,10 @@ compute_transmission_probs <- function(params) {
 #' Check susceptibility status
 #'
 #' @param health_vector Character vector of health states.
-#' @return Logical vector indicating susceptibility.
-#' @keywords internal
-is_susceptible <- function(health_vector) {
-  health_vector %in% c("S", "V")
+#' @param states Vector with health state options
+#' @return Logical vector indicating susceptibility, wich an be partial in case of vaccination
+is_susceptible <- function(health_vector, states) {
+  health_vector %in% c(states$S, states$V)
 }
 
 # ------------------------------------------------------------------------ -
@@ -108,15 +107,18 @@ run_ibm <- function(params, verbose = TRUE) {
 
   transmission_probs <- compute_transmission_probs(params)
 
+  # define health states
+  states <- data.frame(S ="S", I = "I", R = "R",  V = "V", D = "D")
+  
   # Vaccination
   id_vaccinated <- sample(params$pop_size,
                           params$pop_size * params$vaccine_coverage)
-  pop_data$health[id_vaccinated] <- "V"
+  pop_data$health[id_vaccinated] <- states$V
 
   # Seed infections
-  seed_ids <- sample(which(pop_data$health == "S"),
+  seed_ids <- sample(which(pop_data$health == states$S),
                      params$num_infected_seeds)
-  pop_data$health[seed_ids] <- "I"
+  pop_data$health[seed_ids] <- states$I
   pop_data$time_of_infection[seed_ids] <- 0
 
   # Recovery and mortality probabilities
@@ -141,19 +143,19 @@ run_ibm <- function(params, verbose = TRUE) {
 
     pb$tick()
 
-    is_infected <- pop_data$health == "I"
+    is_infected <- pop_data$health == states$I
     infected_ids <- which(is_infected)
 
     for (i in infected_ids) {
 
-      prob_infection <- is_susceptible(pop_data$health) *
+      prob_infection <- is_susceptible(pop_data$health, states) *
         transmission_probs$prob_community +
-        (is_susceptible(pop_data$health) &
+        (is_susceptible(pop_data$health, states) &
            pop_data$hh_id[i] == pop_data$hh_id) *
         transmission_probs$prob_household
 
       if (!is.na(pop_data$classroom_id[i])) {
-        in_class <- is_susceptible(pop_data$health) &
+        in_class <- is_susceptible(pop_data$health, states) &
           !is.na(pop_data$classroom_id) &
           pop_data$classroom_id[i] == pop_data$classroom_id
         prob_infection[in_class] <-
@@ -161,22 +163,22 @@ run_ibm <- function(params, verbose = TRUE) {
       }
 
       if (!is.na(pop_data$workplace_id[i])) {
-        at_work <- is_susceptible(pop_data$health) &
+        at_work <- is_susceptible(pop_data$health, states) &
           !is.na(pop_data$workplace_id) &
           pop_data$workplace_id[i] == pop_data$workplace_id
         prob_infection[at_work] <-
           prob_infection[at_work] + transmission_probs$prob_workplace
       }
 
-      prob_infection[pop_data$health == "V"] <-
-        prob_infection[pop_data$health == "V"] *
+      prob_infection[pop_data$health == states$V] <-
+        prob_infection[pop_data$health == states$V] *
         (1 - params$vaccine_effectiveness)
 
       new_infections <- rbinom(
         params$pop_size, size = 1, prob = prob_infection
       ) == 1
 
-      pop_data$health[new_infections] <- "I"
+      pop_data$health[new_infections] <- states$I
       pop_data$infector[new_infections] <- i
       pop_data$infector_age[new_infections] <- pop_data$age[i]
       pop_data$time_of_infection[new_infections] <- day
@@ -188,12 +190,12 @@ run_ibm <- function(params, verbose = TRUE) {
 
     recovered <- is_infected &
       rbinom(params$pop_size, 1, prob_recovery) == 1
-    pop_data$health[recovered] <- "R"
+    pop_data$health[recovered] <- states$R
 
     prob_mortality <- prob_mortality_general[pop_data$age] +
       is_infected * prob_mortality_disease[pop_data$age]
     deaths <- rbinom(params$pop_size, 1, prob_mortality) == 1
-    pop_data$health[deaths] <- "D"
+    pop_data$health[deaths] <- states$D
 
     log_health_matrix[, day] <- pop_data$health
   }
@@ -201,8 +203,6 @@ run_ibm <- function(params, verbose = TRUE) {
   
   ## Output ----
   # -------------------------- -
-
-  states <- c("S", "I", "R", "V", "D")
   log_health <- as.data.frame(sapply(
     states,
     function(s) colSums(log_health_matrix == s) / params$pop_size
@@ -240,10 +240,8 @@ run_ibm <- function(params, verbose = TRUE) {
 
 #' Run baseline model with default parameters
 #'
-#' @param params Optional parameter list (ignored).
-#' @param verbose Logical.
-#' @keywords internal
-run_ibm_default <- function(params = NULL, verbose = FALSE) {
+#' @param verbose Logical to disable all output 
+run_ibm_default <- function(verbose = FALSE) {
 
   default_params <- get_default_parameters()
   default_params$bool_add_baseline <- FALSE

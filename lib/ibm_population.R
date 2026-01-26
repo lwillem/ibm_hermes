@@ -20,7 +20,7 @@ create_population_matrix <- function(params) {
   adult1 <- data.frame(
     age = sample(params$ages_adult, num_households, replace = TRUE),
     hh_id = seq_len(num_households),
-    member_id = 1
+    hh_role = 1
   )
 
   adult2 <- data.frame(
@@ -28,21 +28,21 @@ create_population_matrix <- function(params) {
       sample(-params$adult_age_tolerance:params$adult_age_tolerance,
              num_households, replace = TRUE),
     hh_id = seq_len(num_households),
-    member_id = 2
+    hh_role = 2
   )
 
   child1 <- data.frame(
     age = pmax(adult1$age, adult2$age) -
       sample(params$household_age_gap, num_households, replace = TRUE),
     hh_id = seq_len(num_households),
-    member_id = 3
+    hh_role = 3
   )
 
   child2 <- data.frame(
     age = child1$age -
       sample(seq_len(params$child_age_tolerance), num_households, replace = TRUE),
     hh_id = seq_len(num_households),
-    member_id = 4
+    hh_role = 4
   )
 
   children <- rbind(child1, child2)
@@ -55,6 +55,14 @@ create_population_matrix <- function(params) {
     pop_data <- pop_data[sample(seq_len(nrow(pop_data)), params$pop_size), ]
   }
 
+  num_schools <- ceiling(sum(pop_data$age %in% params$target_school_ages) /
+                           params$target_school_size)
+  pop_data <- set_schools(pop_data, num_schools, params$target_school_ages)
+
+  num_workplaces <- ceiling(sum(pop_data$age %in% params$target_workplace_ages) /
+                              params$target_workplace_size)
+  pop_data <- set_workplaces(pop_data, num_workplaces, params$target_school_ages)
+
   pop_data <- data.frame(
     pop_data,
     health = "S",
@@ -64,19 +72,14 @@ create_population_matrix <- function(params) {
     secondary_cases = 0,
     stringsAsFactors = FALSE
   )
-
-  num_schools <- ceiling(sum(pop_data$age %in% params$target_school_ages) /
-                           params$target_school_size)
-  pop_data <- set_schools(pop_data, num_schools, params$target_school_ages)
-
-  num_workplaces <- ceiling(sum(pop_data$age %in% params$target_workplace_ages) /
-                              params$target_workplace_size)
-  pop_data <- set_workplaces(pop_data, num_workplaces, params$target_school_ages)
-
+  
   if (params$bool_show_demographics) {
     plot_population_histograms(pop_data)
   }
 
+  # remove househole role
+  pop_data$hh_role <- NULL
+  
   return(pop_data)
 }
 
@@ -93,10 +96,10 @@ plot_population_histograms <- function(pop_data, opt_mfrow = c(2,4)){
   # get max age
   pop_age_max <- max(pop_data$age)
   hist(pop_data$age,-1:pop_age_max,main='total population',xlab='age')
-  hist(pop_data$age[pop_data$member_id==1],-1:pop_age_max,main='adult 1',xlab='age')
-  hist(pop_data$age[pop_data$member_id==2],-1:pop_age_max,main='adult 2',xlab='age')
-  hist(pop_data$age[pop_data$member_id==3],-1:pop_age_max,main='child 1',xlab='age')
-  hist(pop_data$age[pop_data$member_id==4],-1:pop_age_max,main='child 2',xlab='age')
+  hist(pop_data$age[pop_data$hh_role==1],-1:pop_age_max,main='adult 1',xlab='age')
+  hist(pop_data$age[pop_data$hh_role==2],-1:pop_age_max,main='adult 2',xlab='age')
+  hist(pop_data$age[pop_data$hh_role==3],-1:pop_age_max,main='child 1',xlab='age')
+  hist(pop_data$age[pop_data$hh_role==4],-1:pop_age_max,main='child 2',xlab='age')
   hist(table(pop_data$hh_id),main='household size',xlab='household size')
   
   # check class and workplace size

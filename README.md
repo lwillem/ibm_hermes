@@ -1,61 +1,75 @@
-# HERMES: Health, Epidemic and Economic R-based Microsimulation Engine for individual-based Simulations
+# HERMES: Health, Epidemic and Economic R-based Microsimulation Engine for Individual-based Simulations
 
-HERMES is a lightweight **individual-based modelling (IBM) framework** for
-simulating infectious disease transmission in structured populations.
-It supports households, schools, workplaces, and community transmission,
-and is designed for **research, teaching, and reproducible modelling**.
+HERMES is a lightweight **individual-based modelling (IBM) framework** for the
+simulation of infectious disease transmission in structured populations.
+The framework explicitly represents **heterogeneous individuals** embedded in
+households, schools, workplaces, and the wider community, and is designed to
+support **research, teaching, and reproducible computational modelling**.
 
-The framework is intentionally designed to work both:
-- as a collection of **plain R scripts**, and
-- as a **minimal R package**, without forcing package workflows.
+HERMES is intentionally developed as a collection of **plain R scripts** that are
+transparent, modular, and easily adaptable, lowering the barrier for method
+development, inspection, and extension.
+
+Version: 0.0.1
 
 ---
 
-## Install
+## Installation
 
-Clone or download the repository. Installation or compilation is not needed at this stage.
+Clone or download the repository `https://github.com/lwillem/ibm_hermes.git`.
+At this stage, no installation or compilation steps are required.
+
+---
 
 ## Quick start
 
-Set your working directory to the project root, you can run the main file with:
+Set your working directory to the project root and run the main workbench script:
 
 ```r
 source("main.R")
 ```
 
-or:
+Alternatively, the model kernel can be invoked directly:
 
 ```r
-source('lib/ibm_core.R')
+source("lib/ibm_core.R")
 
 params <- get_default_parameters()
 out <- run_ibm(params)
 ```
 
 This will:
-- load all required functions,
-- initialise default parameters,
-- run an example simulation,
-- optionally perform a regression test.
+- load all required functions and dependencies,
+- initialise the default model parameters,
+- execute an example simulation,
+- optionally perform an internal regression test.
 
 ---
 
-## Quick start (with changed parameters)
+## Quick start (with modified parameters)
 
-If you want to change model parameters, you can do so by changing the content of the `params` variable. You can explore the options by printing all options with `print_model_parameters()`. For example, when changing the number of initial infections to 10:
+Model behaviour is fully controlled via the `params` object.  
+All available parameters can be inspected using:
+
+```r
+print_model_parameters()
+```
+
+For example, to change the number of initially infected individuals and enable
+comparison with a baseline scenario:
 
 ```r
 # load all helper functions
-source('lib/ibm_core.R')
+source("lib/ibm_core.R")
 
-# get default parameters
+# retrieve default parameters
 params <- get_default_parameters()
 
-# change some parameters
-params$num_infected_seeds <- 10  # change infected cases to 10
-params$bool_add_baseline  <- TRUE # option to show the difference with baseline
+# modify selected parameters
+params$num_infected_seeds <- 10     # increase number of initial infections
+params$bool_add_baseline  <- TRUE   # enable baseline comparison
 
-# run model
+# run the model
 out <- run_ibm(params)
 ```
 
@@ -63,54 +77,73 @@ out <- run_ibm(params)
 
 ## Model structure
 
-The framework is organised into clearly separated components:
+The framework is organised into clearly separated components, each with a
+well-defined responsibility:
 
 | File | Responsibility |
 |----|----|
-| `main.R` | Workbench script for running scenarios |
-| `ibm_core.R` | Core model kernel and internal helpers |
-| `ibm_parameters.R` | Parameter definitions and exploration |
+| `main.R` | Workbench script for running model scenarios |
+| `ibm_core.R` | Core simulation kernel and internal helper functions |
+| `ibm_parameters.R` | Definition, inspection, and comparison of model parameters |
 | `ibm_population.R` | Synthetic population generation |
-| `ibm_plot.R` | Plotting utilities |
-| `ibm_test.R` | Regression testing |
+| `ibm_plot.R` | Visualisation and plotting utilities |
+| `ibm_test.R` | Regression testing and reference management |
 
-This separation makes the code easy to read, reuse, and extend.
+This modular structure facilitates code readability, reuse, and systematic
+model extension.
 
 ---
 
 ## Model output
 
-Model output is stored in the `output` directory in a subdirectory with a name included in the `params` variable. The current default output directory is `output/ibm_flu`. The output is saved as rds files and includes:
+Simulation output is written to the `output` directory, in a subdirectory whose
+name is specified via the `params` object. By default, output is stored in:
 
-- health_states.rds A list containing a data.frame `log_health` with the health states in the columns and the time steps in the rows and list called `params` containing all parameters used to obtain this output.
-- pop_matrix.rds The population details at the end of the simulation, with one row per person and the person details in the columns. 
+```
+output/ibm_flu
+```
 
+Results are saved as RDS files and include:
+
+- **`health_states.rds`**  
+  A list containing:
+  - `log_health`: a data frame with population-level health state proportions
+    over time (columns represent health states; rows represent time steps),
+  - `params`: the full set of model parameters used for the simulation.
+
+- **`pop_matrix.rds`**  
+  A data frame containing individual-level population data at the end of the
+  simulation, with one row per individual and individual attributes stored in
+  columns.
+
+---
 
 ## Extending the model
 
-To adopt HERMES safely:
+To extend HERMES in a consistent and reproducible manner:
 
 - Add or modify parameters in `get_default_parameters()`
 - Extend individual attributes in `create_population_matrix()`
-- Extend the model logic in `run_ibm()`
-- Add new internal helpers (e.g. transmission or mortality logic) in
-  `ibm_core.R`
-- Keep `run_ibm()` as the **single model entry point**
+- Extend model logic within `run_ibm()`
+- Introduce new internal helper functions (e.g. transmission or mortality logic)
+  in `ibm_core.R`
+- Maintain `run_ibm()` as the **single model entry point**
 
-This design ensures regression tests remain meaningful.
+This design ensures that regression testing remains informative and that
+structural changes are explicit.
 
 ---
 
 ## Reproducibility
 
-- All stochastic behaviour is controlled via `params$rng_seed`
-- A lightweight regression test is provided:
+- All stochastic components are controlled via `params$rng_seed`
+- A lightweight internal regression test is available:
 
 ```r
 run_ibm_regression_test()
 ```
 
-- To update the reference output intentionally:
+- To intentionally update the stored reference output:
 
 ```r
 update_ibm_reference()
@@ -121,4 +154,4 @@ update_ibm_reference()
 ## Author
 
 **Lander Willem**  
-University of Antwerp
+University of Antwerp, Belgium

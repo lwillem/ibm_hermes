@@ -36,8 +36,9 @@ params <- get_default_parameters()
 
 # Optional scenario-specific overrides
 # print_model_parameters()
-params$num_infected_seeds <- 10
-params$bool_add_baseline  <- TRUE
+# params$num_infected_seeds <- 10
+# params$bool_add_baseline  <- TRUE
+# params$pop_size <- 1e4
 
 # ------------------------------------------------------------------------ -
 # RUN MODEL ----
@@ -45,9 +46,17 @@ params$bool_add_baseline  <- TRUE
 
 ibm_results <- run_ibm(params)
 
+# output is stored in: 
+ibm_results$params$output_dir
+
+# explore population output
+pop_data <- readRDS(dir(params$output_dir, pattern="pop_data", full.names = TRUE))
+dim(pop_data)
+head(pop_data)
 
 # ------------------------------------------------------------------------ -
 # REGRESSION TESTING  ----
 # ------------------------------------------------------------------------ -
 # Optional regression testing for the baseline setting
 run_ibm_regression_test()
+
