@@ -74,7 +74,7 @@ param <- list(pop_size           = 2000,  # population size
 print_model_results <- function(log_health,time_start,out_baseline=NA){
   
   bool_add_baseline <- !any(is.na(out_baseline))
-  if(bool_add_baseline){d
+  if(bool_add_baseline){
     # default epidemic characteristics
     default_ti <- paste0('   [baseline: ',round((out_baseline$log_health$I[length(out_baseline$log_health$I)] +
                                                    out_baseline$log_health$R[length(out_baseline$log_health$R)])*100,digits=0),'%]')

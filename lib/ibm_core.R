@@ -1,22 +1,10 @@
 ############################################################################ #
 # This file is part of the individual-based model framework called HERMES
 #
-# HERMES is a health, epidemic and economic microsimulation engine that models 
-# heterogeneous individuals over time to evaluate disease dynamics and the 
-# impact of healthcare interventions under alternative policy scenarios.
+# Goal: script that load all required functions and scripts and contains the main modelling kernel.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# This script is distributed in the hope that it will be useful,but without 
+# any warranty; See the LICENCE.txt for more details.
 #
 # Copyright (C) 2026 lwillem, SIMID, UNIVERSITY OF ANTWERP, BELGIUM
 ############################################################################ #
@@ -24,90 +12,12 @@
 # load libraries 
 library(progress) # progress bar
 
-# load the default parameters into the global environment (for development)
-get_default_parameters <- function(){
-  
-param <- list(pop_size           = 2000,  # population size
-              num_days           = 50,    # time horizon
-              num_infected_seeds = 3,     # initial number of infections
-              vaccine_coverage   = 0.2,   # initial proportion in vaccine state
-              vaccine_effectiveness = 0.8, # vaccine-related protection against infection
-              
-              num_days_infected  = 7, # disease parameter
-              transmission_prob  = 0.1, # transmission dynamics
+# load help function
+source('lib/ibm_population.R')
+source('lib/ibm_test.R')
+source('lib/ibm_parameters.R')
 
-              # school settings
-              target_school_size = 350,     # one class per age group in each school
-              target_school_ages = c(3:18), # define the age groups in school
-              
-              # social contact parameters
-              num_contacts_community_day = 4,    # average number of "effective contacts" per day in the general community 
-              contact_prob_household     = 0.9,  # probability for an "effective contact" at home (1 = fully connected)
-              contact_prob_school        = 0.5,  # probability for an "effective contact" at school 
-              contact_prob_workplace     = 0.1,  # probability for an "effective contact" at work 
-              
-              # workplace settings
-              target_workplace_size = 10,
-              target_workplace_ages = c(19:65),
-              
-              # random number generator settings
-              rng_seed = 2026,
-              
-              # mortality parameters, by age
-              general_mortality_rate = c(rep(0,60),seq(0,0.01,length = 30)),
-              disease_mortality_rate = c(rep(0.01,60),seq(0.01,0.7,length = 30)),
-              
-              #  visualisation parameters
-              bool_show_demographics  = TRUE,   # option to show the demography figures (location IBM only)
-              bool_add_baseline       = FALSE,  # option to add the prevalence with default param
-              bool_return_prevelance  = FALSE,  # option to return the prevalence (and stop)
-              bool_single_plot        = TRUE,    # option to specify the plot layout using sub-panels (or not)
-              
-              # output_tag
-              output_dir = 'output/ibm_flu' 
-              )
-  
-  return(param)
-}
-
-# function to print the model results
-print_model_results <- function(log_health,time_start,out_baseline=NA){
-  
-  bool_add_baseline <- !any(is.na(out_baseline))
-  if(bool_add_baseline){d
-    # default epidemic characteristics
-    default_ti <- paste0('   [baseline: ',round((out_baseline$log_health$I[length(out_baseline$log_health$I)] +
-                                                   out_baseline$log_health$R[length(out_baseline$log_health$R)])*100,digits=0),'%]')
-    default_pp <- paste0('   [baseline: ',round(max(out_baseline$log_health$I)*100,digits=0),'%]')
-    default_pd <- paste0('    [baseline: ',which(out_baseline$log_health$I == max(out_baseline$log_health$I))[1],']')
-  }
- 
-  # print total incidence
-  print('-------------')
-  print('MODEL RESULTS')
-  
-  print(paste0('total incidence: ',round((log_health$I[length(log_health$I)] + log_health$R[length(log_health$R)])*100,digits=0),'%',
-               ifelse(bool_add_baseline,default_ti,'')))
-  
-  # print peak details
-  print(paste0('Peak prevalence: ',round(max(log_health$I)*100,digits=0),'%',
-               ifelse(bool_add_baseline,default_pp,'')))
-  print(paste0('Peak day:        ',which(log_health$I == max(log_health$I))[1], 
-               ifelse(bool_add_baseline,default_pd,'')))
-  
-  # print total run time
-  total_time <- as.double(Sys.time() - time_start,unit='secs')
-  print(paste0('Total run time:  ',round(total_time,digits=0),'s'))
-  
-}
-
-
-# help function to define whether a health state relates to susceptibility
-is_susceptible <- function(vector_health){
-  return(vector_health == 'S' | vector_health == 'V')
-}
-
-# function to run the individual-based model based on social contact locations
+# main function to run the individual-based model based on social contact locations
 run_ibm_location <- function(param, 
                              verbose = TRUE){
   
@@ -294,10 +204,20 @@ run_ibm_location <- function(param,
   legend('top',legend=c('S','I','R','V','D'),col=1:5,lwd=2,ncol=5,cex=0.7,bg='white',
          inset = c(0, -0.3), xpd = NA) # push legend above the plot)
   
+  # option to add the baseline prevalence, if requested and param are not default
   if(param$bool_add_baseline){
+
+    # get default parameters 
+    default_param <- get_default_parameters()
     
-    # get default parameters (and disable the 'add_baseline' option)
-    default_param                        <- get_default_parameters()
+    # if parameters did not change, do not add baseline
+    param_equal <- are_parameters_equal(param, default_param)
+    
+    if(param_equal){
+      out_baseline <- NA
+    } else{
+      
+    # disable the 'add_baseline' option
     default_param$bool_add_baseline      <- FALSE
     default_param$bool_return_prevelance <- TRUE
     default_param$bool_show_demographics <- FALSE
@@ -308,6 +228,8 @@ run_ibm_location <- function(param,
     # add output to the line plot
     lines(out_baseline$log_health$I, col=2,lwd=2,lty=2)
     legend('topright',legend=c('I (baseline)'),col=2,lwd=2,lty=3,cex=0.7,bg='white')
+    }
+    
   } else{
     out_baseline <- NA
   }
@@ -391,153 +313,16 @@ run_ibm_location <- function(param,
   ibm_out <- list(log_health = log_health,
                   param = param)
   saveRDS(ibm_out, file = paste0(param$output_dir,'/health_time.rds'))
-  
-  # # option to store the full population matrix
-  # saveRDS(pop_data, file = paste0(param$output_dir,'/pop_data.rds'))
+  saveRDS(pop_data, file = paste0(param$output_dir,'/pop_data.rds'))
   
   # return health states over time
   return(list(log_health = log_health, 
               param = param))
 }
 
-#' @title Create a synthetic population with households
-#'
-#' @description This function creates a population with households
-#'
-#' @param pop_size  the final population size
-#' @param num_schools the number of schools (which contains one class per age group)
-#' @param num_workplaces the number of workplaces in the population
-#'
-#' @keywords external
-#' @export
-#pop_size <- 1e4
-create_population_matrix <- function(param)
-{
-  ## demographic parameters
-  ages_adult <- 19:80
-  ages_child <- 1:18
-  adult_age_tolerance     <- -5:5    # age tolerance between adults
-  child_age_tolerance     <- 1:4    # age tolerance between children
-  household_age_gap       <- 22:35     # min age gap between adults and youngest child
-  
-  # start with households of size 4, with 20% extra (so we can delete some of them later)
-  #num_hh <- ceiling(pop_size / 4 * 1.20)
-  num_hh <- ceiling(param$pop_size / 2)
-  
-  ## create adult 1
-  pop_data_adult1 <- data.frame(age = sample(ages_adult, num_hh, replace = TRUE),
-                                hh_id = 1:num_hh,
-                                member_id = 1)
-  
-  ## create adult 2: based on age gap with adult 1
-  pop_data_adult2 <- data.frame(age = pop_data_adult1$age + sample(adult_age_tolerance, num_hh, replace = TRUE),
-                                hh_id = 1:num_hh,
-                                member_id = 2)
-  
-  ## create child 1, based on age gap with youngest parent
-  pop_data_child1 <- data.frame(age = pmax(pop_data_adult1$age,pop_data_adult2$age) - sample(household_age_gap, num_hh, replace = TRUE),
-                                hh_id = 1:num_hh,
-                                member_id = 3)
-  
-  ## create child 2: based on age gap with sibling
-  pop_data_child2 <- data.frame(age = pop_data_child1$age - sample(child_age_tolerance, num_hh, replace = TRUE),
-                                hh_id = 1:num_hh,
-                                member_id = 4)
-  
-  # combine child data
-  pop_data_child <- rbind(pop_data_child1,
-                          pop_data_child2)
-  
-  # remove child ages < 0 or above 18
-  pop_data_child <- pop_data_child[pop_data_child$age > 0  & 
-                                     pop_data_child$age < min(ages_adult),]
-  
-  # create the population
-  pop_data         <- rbind(pop_data_adult1,
-                            pop_data_adult2,
-                            pop_data_child)  # start from empty matrix
-  dim(pop_data)
-  
-  # if needed, select all individuals within the given population size
-  if(nrow(pop_data) > param$pop_size){
-    pop_data <- pop_data[sample(1:nrow(pop_data),param$pop_size),]
-  }
-  
-  # add health state: susceptible
-  pop_data <- data.frame(pop_data,
-                         health              = 'S',           # column to store the health state
-                         infector            = NA,            # column to store the source of infection
-                         time_of_infection   = NA,            # column to store the time of infection
-                         generation_interval = 0,             # column to store the generation interval
-                         secondary_cases     = 0,             # column to store the number of secondary cases
-                         stringsAsFactors    = FALSE)
-  
-  # set school classes by age and number of schools
-  num_schools <- ceiling(sum(pop_data$age %in% param$target_school_ages) / param$target_school_size)
-  pop_data    <- set_schools(pop_data, num_schools, param$target_school_ages)
-  
-  # set workplace 
-  num_workplaces <- ceiling(sum(pop_data$age %in% param$target_workplace_ages) / param$target_workplace_size)
-  pop_data <- set_workplaces(pop_data, num_workplaces, param$target_school_ages)
-  
-  # option to plot demographics
-  if(param$bool_show_demographics){
-    plot_population_histograms(pop_data)
-  }
-  
-  return(pop_data)
-  
-} # end function
-
-
-plot_population_histograms <- function(pop_data, opt_mfrow = c(2,4)){
-  
-  # create a figure with 8 subplots
-  par(mfrow = opt_mfrow)
-  
-  # get max age
-  pop_age_max <- max(pop_data$age)
-  hist(pop_data$age,-1:pop_age_max,main='total population',xlab='age')
-  hist(pop_data$age[pop_data$member_id==1],-1:pop_age_max,main='adult 1',xlab='age')
-  hist(pop_data$age[pop_data$member_id==2],-1:pop_age_max,main='adult 2',xlab='age')
-  hist(pop_data$age[pop_data$member_id==3],-1:pop_age_max,main='child 1',xlab='age')
-  hist(pop_data$age[pop_data$member_id==4],-1:pop_age_max,main='child 2',xlab='age')
-  hist(table(pop_data$hh_id),main='household size',xlab='household size')
-  
-  # check class and workplace size
-  if(any(!is.na(pop_data$classroom_id))) hist(table(pop_data$classroom_id),xlab='Size',main='School class size')
-  if(any(!is.na(pop_data$workplace_id))) hist(table(pop_data$workplace_id),xlab='Size',main='Worplace size')
-}
-
-set_schools <- function(pop_data, num_schools, target_school_ages){
-  if(num_schools > 0){
-    # eg. 'class3_1' is the 1th classroom with 3-year olds children
-    pop_data$classroom_id <- paste0('class', pop_data$age, '_', sample(num_schools, nrow(pop_data), replace = TRUE))
-    
-    # set 'classroom_id' for infants and adults outside the target ages to 'NA' (=none)
-    boolean_school_pop    <- pop_data$age %in% target_school_ages
-    pop_data$classroom_id[!boolean_school_pop] <- NA
-  } else {
-    pop_data$classroom_id <- NA
-  }
-  # return the result
-  return(pop_data)
-}
-
-## workplaces
-set_workplaces <- function(pop_data, num_workplaces, target_school_ages){
-  if(num_workplaces > 0){
-    # sample a workplace for each individual
-    pop_data$workplace_id <- sample(num_workplaces, nrow(pop_data), replace = TRUE)
-    
-    # set 'workplace_id' for children to 'NA' (= no workplace)
-    boolean_workplace_pop <- pop_data$age <= max(target_school_ages)
-    pop_data$workplace_id[boolean_workplace_pop] <- NA    
-  } else {
-    pop_data$workplace_id <- NA
-  }
-  # return the result
-  return(pop_data)
+# help function to define whether a health state relates to susceptibility
+is_susceptible <- function(vector_health){
+  return(vector_health == 'S' | vector_health == 'V')
 }
 
 plot_transmission_matrix <- function(mij,
@@ -651,59 +436,36 @@ plot_transmission_matrix <- function(mij,
   
 }
 
-check_model_logic <- function(bool_rrv = FALSE){
+# function to print the model results
+print_model_results <- function(log_health,time_start,out_baseline=NA){
   
-  # load default parameters
-  param <- get_default_parameters()
-
-  # adjust some parameters
-  param$bool_add_baseline      <- FALSE
-  param$bool_show_demographics <- FALSE
-  
-  # run the IBM
-  ibm_out <- run_ibm_location(param, verbose = FALSE)
-  
-  # message
-  # dry run complete
-  print('model succesfully completed')
-  
-  # option to check content
-  previous_output_filename <- 'output/reference/ibm_out_baseline.rds'
-  if(bool_rrv){
-    if(!dir.exists(dirname(previous_output_filename))){
-      dir.create(dirname(previous_output_filename), recursive = TRUE)
-    }
-    saveRDS(ibm_out, previous_output_filename)
-    print('new reference model output stored')
-  } else if(file.exists(previous_output_filename)){
-    
-    previous_ibm_out <- readRDS(previous_output_filename)
-  
-    # check model parameters
-    bool_similar_param <- TRUE
-    for(i_param in names(ibm_out$param))
-      if(any(unlist(ibm_out$param[i_param]) != unlist(previous_ibm_out$param[i_param]))){
-        print('param changed')
-        bool_similar_param <- FALSE
-      }
-      
-    # if model parameters did not change, compare model output
-    if(bool_similar_param){
-      if(any(unlist(ibm_out$log_health) != unlist(previous_ibm_out$log_health))){
-        print('model output changed')
-      } else{
-        print('model output did not change, model check complete')
-      }
-    } else {
-      print('model output not tested, since model parameters already differed')
-    }
-  } else{
-    print('model reference not available, consider to run `rrv()` to set model reference output')
+  bool_add_baseline <- !any(is.na(out_baseline))
+  if(bool_add_baseline){
+    # default epidemic characteristics
+    default_ti <- paste0('   [baseline: ',round((out_baseline$log_health$I[length(out_baseline$log_health$I)] +
+                                                   out_baseline$log_health$R[length(out_baseline$log_health$R)])*100,digits=0),'%]')
+    default_pp <- paste0('   [baseline: ',round(max(out_baseline$log_health$I)*100,digits=0),'%]')
+    default_pd <- paste0('    [baseline: ',which(out_baseline$log_health$I == max(out_baseline$log_health$I))[1],']')
   }
+  
+  # print total incidence
+  print('-------------')
+  print('MODEL RESULTS')
+  
+  print(paste0('total incidence: ',round((log_health$I[length(log_health$I)] + log_health$R[length(log_health$R)])*100,digits=0),'%',
+               ifelse(bool_add_baseline,default_ti,'')))
+  
+  # print peak details
+  print(paste0('Peak prevalence: ',round(max(log_health$I)*100,digits=0),'%',
+               ifelse(bool_add_baseline,default_pp,'')))
+  print(paste0('Peak day:        ',which(log_health$I == max(log_health$I))[1], 
+               ifelse(bool_add_baseline,default_pd,'')))
+  
+  # print total run time
+  total_time <- as.double(Sys.time() - time_start,unit='secs')
+  print(paste0('Total run time:  ',round(total_time,digits=0),'s'))
+  
 }
 
-# reset reference values
-rrv <- function(){
-  check_model_logic(bool_rrv = TRUE)
-saveRDS(ibm_out, file = paste0(param$output_tag,'.rds'))
-  }
+
+
