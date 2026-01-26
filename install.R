@@ -1,7 +1,7 @@
 ############################################################################ #
 # This file is part of the individual-based modelling framework called HERMES
 #
-# Goal: download and install HERMES helper scripts into a local 'lib/' folder
+# Goal: download HERMES helper scripts into a local 'lib/' folder
 #
 # This script is distributed in the hope that it will be useful, but without
 # any warranty; See the LICENCE.txt for more details.
@@ -16,7 +16,6 @@
 #   this script.
 # - All helper files will be downloaded into a local 'lib/' directory.
 # - Existing files in 'lib/' with the same name will be overwritten.
-# - This script is intended for script-based usage, not package installation.
 # -------------------------------------------------------------------------- -
 
 # Required dependency for interacting with the GitHub API
@@ -26,7 +25,7 @@ library(jsonlite)
 github_api_url <- "https://api.github.com/repos/lwillem/ibm_hermes/contents/lib"
 
 # Local destination directory for helper scripts
-lib_dir <- "lib"
+project_dir <- "ibm_hermes"
 
 # Query the GitHub API to retrieve metadata for files in the repository
 repo_contents <- fromJSON(github_api_url)
@@ -38,28 +37,31 @@ lib_r_files <- repo_contents[
 ]
 
 # PREPARE LOCAL DIRECTORY
-# Create local 'lib/' directory if it does not yet exist
-dir.create(lib_dir, showWarnings = FALSE)
+# Create local project directory if it does not yet exist
+dir.create(project_dir, showWarnings = FALSE, recursive = TRUE)
 
 # DOWNLOAD HELPER FILES
 for (i in seq_len(nrow(lib_r_files))) {
-
-  message("Downloading: ", lib_r_files$name[i])
-
   download.file(
     url  = lib_r_files$download_url[i],
-    destfile = file.path(lib_dir, lib_r_files$name[i]),
+    destfile = file.path(project_dir, 'lib', lib_r_files$name[i]),
     mode = "wb"
   )
 }
 
-# Download DESCRIPTION.txt for reference and documentation purposes
-description_url <- gsub("lib$", "DESCRIPTION.txt", github_api_url)
+# DOWNLOAD MAIN and DESCRIPTION FILES
+repo_meta_content <- fromJSON(dirname(github_api_url))
 
 download.file(
-  url = description_url,
-  destfile = file.path(lib_dir, "DESCRIPTION.txt"),
-  mode = "wb"
+  url = repo_meta_content$download_url[repo_meta_content$name == 'main.R'],
+  destfile = file.path(dirname(project_dir), 'main.R'),
+  mode = "wb",
 )
 
-message("HERMES helper files successfully installed in 'lib/' directory.")
+download.file(
+  url = repo_meta_content$download_url[repo_meta_content$name == 'DESCRIPTION.txt'],
+  destfile = file.path(project_dir, 'DESCRIPTION.txt'),
+  mode = "wb",
+)
+
+message(paste0("All HERMES files successfully installed in `", project_dir, "` directory."))
