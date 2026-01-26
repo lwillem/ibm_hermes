@@ -25,7 +25,7 @@ library(jsonlite)
 github_api_url <- "https://api.github.com/repos/lwillem/ibm_hermes/contents/lib"
 
 # Local destination directory for helper scripts
-project_dir <- "ibm_hermes"
+project_dir <- "."
 
 # Query the GitHub API to retrieve metadata for files in the repository
 repo_contents <- fromJSON(github_api_url)
@@ -38,7 +38,7 @@ lib_r_files <- repo_contents[
 
 # PREPARE LOCAL DIRECTORY
 # Create local project directory if it does not yet exist
-dir.create(project_dir, showWarnings = FALSE, recursive = TRUE)
+dir.create(file.path(project_dir, 'lib'), showWarnings = TRUE, recursive = TRUE)
 
 # DOWNLOAD HELPER FILES
 for (i in seq_len(nrow(lib_r_files))) {
