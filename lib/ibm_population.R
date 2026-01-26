@@ -61,7 +61,7 @@ create_population_matrix <- function(params) {
 
   num_workplaces <- ceiling(sum(pop_data$age %in% params$target_workplace_ages) /
                               params$target_workplace_size)
-  pop_data <- set_workplaces(pop_data, num_workplaces, params$target_school_ages)
+  pop_data <- set_workplaces(pop_data, num_workplaces, params$target_workplace_ages)
 
   pop_data <- data.frame(
     pop_data,
@@ -133,14 +133,14 @@ set_schools <- function(pop_data, num_schools, target_school_ages){
 #' @param pop_data model population matrix.
 #' @param num_workplaces number of workplaces to set
 #' @param target_school_ages ages to include in school setting, hence excluded from workplace
-set_workplaces <- function(pop_data, num_workplaces, target_school_ages){
+set_workplaces <- function(pop_data, num_workplaces, target_workplace_ages){
   if(num_workplaces > 0){
     # sample a workplace for each individual
     pop_data$workplace_id <- sample(num_workplaces, nrow(pop_data), replace = TRUE)
     
-    # set 'workplace_id' for children to 'NA' (= no workplace)
-    boolean_workplace_pop <- pop_data$age <= max(target_school_ages)
-    pop_data$workplace_id[boolean_workplace_pop] <- NA    
+    # set 'workplace_id' for individuals with an age outside target_workplace_ages to 'NA' (= no workplace)
+    boolean_workplace_pop <- pop_data$age %in% target_workplace_ages
+    pop_data$workplace_id[!boolean_workplace_pop] <- NA    
   } else {
     pop_data$workplace_id <- NA
   }
