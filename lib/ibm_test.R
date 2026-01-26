@@ -42,11 +42,11 @@ run_ibm_regression_test <- function(update_reference = FALSE,
   
   # Run the IBM with default parameters
   ibm_output <- run_ibm_default(verbose = FALSE)
-  params <- ibm_output$params
+  param <- ibm_output$param
   
   message("Model execution successfully completed")
 
-  reference_file <- paste0(params$output_dir,"_reference/ibm_out_baseline.rds")
+  reference_file <- paste0(param$output_dir,"_reference/ibm_out_baseline.rds")
 
   # Update reference output if requested
   if (update_reference) {
@@ -72,12 +72,12 @@ run_ibm_regression_test <- function(update_reference = FALSE,
   reference_output <- readRDS(reference_file)
 
   # Check parameter equality (exclude a specific subet)
-  params_equal <- are_parameters_equal(ibm_output$param,
-                                       reference_output$param,
-                                       verbose = TRUE)
+  param_equal <- are_parameters_equal(ibm_output$param,
+                                      reference_output$param,
+                                      verbose = TRUE)
   
   # Only compare outputs if parameters are identical (this can be overruled)
-  if (!overrule_param_check && !params_equal) {
+  if (!overrule_param_check && !param_equal) {
     message("Model output not tested because parameters differ – consider to update the IBM reference output using `update_ibm_reference()`")
     return(invisible(TRUE))
   }

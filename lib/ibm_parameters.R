@@ -85,7 +85,7 @@ print_model_parameters <- function(param){
 # Check parameter equality (exclude a specific subet)
 are_parameters_equal <- function(param1, param2, param_exclude = c('output_dir'), verbose = FALSE){
   
-  params_equal <- TRUE
+  param_equal <- TRUE
   
   for (param_name in names(param1)) {
     if(!param_name %in% param_exclude)
@@ -94,10 +94,10 @@ are_parameters_equal <- function(param1, param2, param_exclude = c('output_dir')
         unlist(param2[[param_name]])
       )) {
         if(verbose) message("Parameter changed: ", param_name)
-        params_equal <- FALSE
+        param_equal <- FALSE
       }
   }
   
-  return(params_equal)
+  return(param_equal)
 }
 

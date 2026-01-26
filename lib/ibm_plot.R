@@ -2,6 +2,9 @@
 # This file is part of the individual-based model framework called HERMES
 #
 # Goal: to plot model output
+# 
+# This script is distributed in the hope that it will be useful,but without 
+# any warranty; See the LICENCE.txt for more details.
 #
 # Copyright (C) 2026 lwillem, SIMID, UNIVERSITY OF ANTWERP, BELGIUM
 ############################################################################ #
