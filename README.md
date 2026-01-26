@@ -51,7 +51,7 @@ out <- run_ibm(params)
 
 ---
 
-## To use with modified parameters
+## To adopt modified parameters
 
 Model behaviour is fully controlled via the `params` object.  
 All available parameters can be inspected using:
@@ -152,6 +152,26 @@ update_ibm_reference()
 
 ---
 
+## Potential extensions
+
+The current implementation of HERMES is intentionally modular and can be
+extended in several scientifically relevant directions, including but not
+limited to:
+
+- Derivation of additional summary statistics of incidence and prevalence
+  trajectories over time, including outputs that mimic observed
+  seroprevalence or surveillance data.
+
+- Incorporation of behaviourally adaptive individuals, for example by
+  modifying contact patterns or transmission probabilities for infected
+  individuals, or for individuals who are aware of their infection status
+  through testing or symptom onset.
+
+- Extension of the framework to include additional disease states, testing,
+  isolation, or intervention modules, enabling evaluation of alternative
+  public health or healthcare policy scenarios.
+
+---
 ## Author
 
 **Lander Willem**  
