@@ -10,14 +10,18 @@ HERMES is intentionally developed as a collection of **plain R scripts** that ar
 transparent, modular, and easily adaptable, lowering the barrier for method
 development, inspection, and extension.
 
-Version: 0.0.1
-
 ---
+## Installation (using R)
 
-## Installation
+Download all R files using `download.file()`. For more info, please consult
+https://github.com/lwillem/ibm_hermes/blob/main/install.R
+
+
+
+## Installation (using GitHub)
 
 Clone or download the repository `https://github.com/lwillem/ibm_hermes.git`.
-At this stage, no installation or compilation steps are required.
+
 
 ---
 
@@ -29,6 +33,12 @@ Set your working directory to the project root and run the main workbench script
 source("main.R")
 ```
 
+This will:
+- load all required functions and dependencies,
+- initialise the default model parameters,
+- execute an example simulation,
+- optionally perform an internal regression test.
+
 Alternatively, the model kernel can be invoked directly:
 
 ```r
@@ -38,15 +48,10 @@ params <- get_default_parameters()
 out <- run_ibm(params)
 ```
 
-This will:
-- load all required functions and dependencies,
-- initialise the default model parameters,
-- execute an example simulation,
-- optionally perform an internal regression test.
 
 ---
 
-## Quick start (with modified parameters)
+## To use with modified parameters
 
 Model behaviour is fully controlled via the `params` object.  
 All available parameters can be inspected using:
@@ -83,11 +88,11 @@ well-defined responsibility:
 | File | Responsibility |
 |----|----|
 | `main.R` | Workbench script for running model scenarios |
-| `ibm_core.R` | Core simulation kernel and internal helper functions |
-| `ibm_parameters.R` | Definition, inspection, and comparison of model parameters |
-| `ibm_population.R` | Synthetic population generation |
-| `ibm_plot.R` | Visualisation and plotting utilities |
-| `ibm_test.R` | Regression testing and reference management |
+| `lib/ibm_core.R` | Core simulation kernel and internal helper functions |
+| `lib/ibm_parameters.R` | Definition, inspection, and comparison of model parameters |
+| `lib/ibm_population.R` | Synthetic population generation |
+| `lib/ibm_plot.R` | Visualisation and plotting utilities |
+| `lib/ibm_test.R` | Regression testing and reference management |
 
 This modular structure facilitates code readability, reuse, and systematic
 model extension.
@@ -97,11 +102,7 @@ model extension.
 ## Model output
 
 Simulation output is written to the `output` directory, in a subdirectory whose
-name is specified via the `params` object. By default, output is stored in:
-
-```
-output/ibm_flu
-```
+name is specified via the `params` object. By default, output is stored in `output/ibm_flu`
 
 Results are saved as RDS files and include:
 

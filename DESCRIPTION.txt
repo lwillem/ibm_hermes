@@ -1,0 +1,8 @@
+Title: HERMES Individual-Based Modelling Framework
+Version: 0.0.1
+Description: A lightweight individual-based modelling (IBM) framework for
+    simulating infectious disease transmission in structured populations.
+    The framework is designed to run as a collection of scripts, facilitating 
+    reuse, teaching, and reproducible research.
+Author: Lander Willem, University of Antwerp, Belgium
+Contact: lander.willem@uantwerpen.be
