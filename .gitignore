@@ -49,3 +49,5 @@ po/*~
 rsconnect/
 ~$*.docx
 output
+lib_old
+README.html

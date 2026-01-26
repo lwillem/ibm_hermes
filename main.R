@@ -3,30 +3,51 @@
 #
 # Goal: main script, i.e. workbench, to run individual-based simulations
 #
-# This script is distributed in the hope that it will be useful,but without 
+# This script is distributed in the hope that it will be useful, but without
 # any warranty; See the LICENCE.txt for more details.
 #
 # Copyright (C) 2026 lwillem, SIMID, UNIVERSITY OF ANTWERP, BELGIUM
 ############################################################################ #
 
-# clear workspace
+#' Run a HERMES individual-based model scenario
+#'
+#' This script serves as a lightweight workbench that:
+#' \itemize{
+#'   \item loads core model functionality,
+#'   \item configures scenario-specific parameters,
+#'   \item executes the simulation,
+#'   \item optionally runs regression tests.
+#' }
+#'
+
+
+# Clear workspace
 rm(list = ls())
 
-# load script with functions
+# Load core model functions
 source('lib/ibm_core.R')
 
-# load default parameters
-param <- get_default_parameters()
+# ------------------------------------------------------------------------ -
+# PARAMETER CONFIGURATION ----
+# ------------------------------------------------------------------------ -
 
-# option to change model parameters, to list all options, run `print_model_parameters()`
+# Central parameter object controlling all model behaviour
+params <- get_default_parameters()
+
+# Optional scenario-specific overrides
 # print_model_parameters()
-# e.g. param$num_infected_seeds <- 10
-# e.g. param$bool_add_baseline <- TRUE
-param$num_infected_seeds <- 10
-param$bool_add_baseline <- TRUE
+params$num_infected_seeds <- 10
+params$bool_add_baseline  <- TRUE
 
-# run the IBM
-ibm_out <- run_ibm(param)
+# ------------------------------------------------------------------------ -
+# RUN MODEL ----
+# ------------------------------------------------------------------------ -
 
-# regression testing
+ibm_results <- run_ibm(params)
+
+
+# ------------------------------------------------------------------------ -
+# REGRESSION TESTING  ----
+# ------------------------------------------------------------------------ -
+# Optional regression testing for the baseline setting
 run_ibm_regression_test()
