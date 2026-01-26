@@ -16,10 +16,10 @@ library(progress) # progress bar
 source('lib/ibm_population.R')
 source('lib/ibm_test.R')
 source('lib/ibm_parameters.R')
+source('lib/ibm_plot.R')
 
 # main function to run the individual-based model based on social contact locations
-run_ibm_location <- function(param, 
-                             verbose = TRUE){
+run_ibm <- function(param, verbose = TRUE){
   
   ######################################################### #
   # DEFENSIVE CHECKS  ----
@@ -95,7 +95,7 @@ run_ibm_location <- function(param,
   ####################################### #
   
   # init progress bar
-  pb <- progress_bar$new(format = "  run all days [:bar] :percent ETA: :eta",
+  pb <- progress_bar$new(format = paste0("Run ",basename(param$output_dir),": [:bar] :percent ETA: :eta"),
                          total = param$num_days, clear = FALSE, width= 60)
   
   # LOOP OVER ALL DAYS
@@ -103,10 +103,8 @@ run_ibm_location <- function(param,
   {
     
     # option to advance progress bar
-    if(verbose) {
-      pb$tick()
-    }
-    
+    pb$tick()
+
     # step 2: identify infected individuals
     boolean_infected <- pop_data$health == 'I'   # = boolean TRUE/FALSE
     ind_infected     <- which(boolean_infected)  # = indices
@@ -178,136 +176,37 @@ run_ibm_location <- function(param,
     \(x) colSums(log_pop_data == x) / param$pop_size
   ))
   
-  if(param$bool_return_prevelance){
-    return(list(log_health = log_health, 
-                      param = param))
-  }
   
-  # change figure configuration => 4 sub-plots
-  if(param$bool_single_plot) {
-    par(mfrow=c(2,2))
-  }
-  
-  # plot health states over time
-  plot(log_health$S,
-       type='l',
-       xlab='Time (days)',
-       ylab='Population fraction',
-      # main='location-specific IBM',
-       ylim=c(0,1),
-       lwd=2)
-  lines(log_health$I,  col=2,lwd=2)
-  lines(log_health$R,  col=3,lwd=2)
-  lines(log_health$V,  col=4,lwd=2)
-  lines(log_health$D,  col=5,lwd=2)
-  
-  legend('top',legend=c('S','I','R','V','D'),col=1:5,lwd=2,ncol=5,cex=0.7,bg='white',
-         inset = c(0, -0.3), xpd = NA) # push legend above the plot)
-  
-  # option to add the baseline prevalence, if requested and param are not default
-  if(param$bool_add_baseline){
-
-    # get default parameters 
-    default_param <- get_default_parameters()
-    
-    # if parameters did not change, do not add baseline
-    param_equal <- are_parameters_equal(param, default_param)
-    
-    if(param_equal){
-      out_baseline <- NA
-    } else{
-      
-    # disable the 'add_baseline' option
-    default_param$bool_add_baseline      <- FALSE
-    default_param$bool_return_prevelance <- TRUE
-    default_param$bool_show_demographics <- FALSE
-    
-    # re-run the model with default parameters
-    out_baseline <- run_ibm_location(param = default_param)
-    
-    # add output to the line plot
-    lines(out_baseline$log_health$I, col=2,lwd=2,lty=2)
-    legend('topright',legend=c('I (baseline)'),col=2,lwd=2,lty=3,cex=0.7,bg='white')
-    }
-    
-  } else{
-    out_baseline <- NA
-  }
-  
-  if(all(is.na(pop_data$secondary_cases))){
-    pop_data$secondary_cases <- -1
-  }
-
-  # plot secondary cases
-  boxplot(secondary_cases ~ time_of_infection, data=pop_data,
-          xlab='time of infection (day)',
-          ylab='secondary cases',
-          main='secondary cases',
-          ylim=c(0,max(10,pop_data$secondary_cases)),
-          xlim=c(0,param$num_days),
-          xaxt='n')
-  axis(1,seq(0,param$num_days,5))
-  
-  # plot generation interval
-  if(all(is.na(pop_data$generation_interval))){
-    pop_data$generation_interval <- -1
-  }
-  boxplot(generation_interval ~ time_of_infection, data=pop_data,
-          xlab='time of infection (day)',
-          ylab='generation interval (days)',
-          main='generation interval',
-          ylim=c(0,max(10,pop_data$generation_interval)),
-          xlim=c(0,param$num_days),
-          xaxt='n')
-  axis(1,seq(0,param$num_days,5))
-  
-  ####################################### #
-  # TRANSMISSION MATRIX    ----
-  ####################################### #
-  # use 3-year age classes
-  max_age                 <- max(pop_data$age)
-  age_cat                 <- seq(1,max_age,3)
-  transmission_age_matrix <- table(cut(pop_data$infector_age,age_cat,right=F),cut(pop_data$age,age_cat,right=F),dnn = list('age infector','age contact'))
-  
-  # create plot title with some driving parameters
-  plot_title <- paste('num_cnt_community',param$num_contacts_community_day,' || ',
-                      'p_cnt_household', param$contact_prob_household, '\n',
-                      'p_cnt_school',param$contact_prob_school,' || ',
-                      'p_cnt_workplace',param$contact_prob_workplace, '\n',
-                      'p_transmission',param$transmission_prob)
-  
-  if(max(transmission_age_matrix)>25){
-    plot_breaks <- c(0:4,seq(5,25,10),max(c(30,transmission_age_matrix)))
-  } else{
-    plot_breaks <- pretty(transmission_age_matrix)
-  }
-    
-  # plot the matrix with color coding
-  plot_transmission_matrix(mij = transmission_age_matrix,
-                           breaks = plot_breaks,
-                           main = plot_title,
-                           num.digits = NA)
-  
-  # PRINT PARAMETERS AND RESULTS ----
+  # PRINT RESULTS AND PARAMETERS
   if(verbose) {
-  print('MODEL PARAMETERS')
-  # loop over the given parameters, add name & value
-  for(i_param in names(param)){
-    p_values <- unlist(param[i_param])
-    if(length(p_values)>10){
-      p_values <- c(p_values[1:9],'...')
-    } 
-      print(paste0(i_param,': ',paste(p_values,collapse = ',')))
+
+    # option to add the baseline prevalence, if requested and param are not default
+    if(param$bool_add_baseline){
+      out_baseline <- run_ibm_default()
+    } else{
+      out_baseline <- NA
+    }
+      
+    # update figure configuration (use panels?)
+    par(mfrow = param$plot_mfrow)
+    
+    # plot model output
+    plot_health_states(log_health, param, out_baseline = out_baseline)
+    plot_secondary_cases(pop_data,param)
+    plot_generation_interval(pop_data,param)
+    plot_transmission_matrix(pop_data = pop_data)
+    
+    # set back the default mfrow
+    par(mfrow=c(1,1))
+    
+    # print model parameters
+    print_model_parameters(param)
+    
+    # print model results
+    print_model_results(log_health = log_health,
+                        time_start = time_start,
+                        out_baseline = out_baseline)
   }
-  
-  # print total incidence
-  print_model_results(log_health = log_health,
-                      time_start = time_start,
-                      out_baseline = out_baseline)
-  }
-  
-  # set back the default par(mfrow)
-  par(mfrow=c(1,1))
   
   # save model results
   ibm_out <- list(log_health = log_health,
@@ -325,117 +224,26 @@ is_susceptible <- function(vector_health){
   return(vector_health == 'S' | vector_health == 'V')
 }
 
-plot_transmission_matrix <- function(mij,
-                                     breaks = NA,
-                                     main = 'Transmission matrix',
-                                     num.digits = NA){
+# main function to run the individual-based model based on social contact locations
+run_ibm_default <- function(param, verbose = TRUE){
   
-  # if no breaks given, use uniform values
-  if(all(is.na(breaks))){
-    breaks <- pretty(mij)
-  } 
   
-  # add additional starting break, to include the minimum value as starting point (in the legend)
-  breaks <- c(min(breaks)-1,breaks)
+  # get default parameters 
+  default_param <- get_default_parameters()
   
-  # set midpoints
-  midpoints <- matrix(
-    breaks[-length(breaks)] + diff(breaks) / 2,
-    nrow = 1, ncol = length(breaks) - 1
-  )
-
-  # set colors
-  num.colors <- length(breaks)-1
-  redc <- heat.colors(num.colors)
+  # disable the 'add_baseline' option
+  default_param$bool_add_baseline      <- FALSE
+  default_param$bool_show_demographics <- FALSE
+  default_param$output_dir             <- paste0(default_param$output_dir,'_default')
   
-  # get plot region for matrix and legend based on current graphical parameters
-  # note: based on layout from fields::imagePlot
-  char.size     <- par()$cin[1] / par()$din[1] # get text character size
-  offset        <- char.size * par()$mar[4] # space between legend and main plot
-  legend.width  <- 1
-  legend.mar    <- 8.1
-  legend.shrink <- 0.9
-  cex.lab       <- 1.2
-  cex.axis      <- 0.8
-  cex.text      <- 1
+  # re-run the model with default parameters
+  model_out <- run_ibm(param = default_param, verbose = FALSE)
   
-  # set legends' plot region
-  legend_plot_region <- par()$plt
-  legend_plot_region[2] <- 1 - (legend.mar * char.size)
-  legend_plot_region[1] <- legend_plot_region[2] - (legend.width * char.size)
-
-  # account for legend.shrink
-  pr <- (legend_plot_region[4] - legend_plot_region[3]) * ((1 - legend.shrink) / 2)
-  legend_plot_region[4] <- legend_plot_region[4] - pr
-  legend_plot_region[3] <- legend_plot_region[3] + pr
-
-  # set main matrix' plot region
-  main_plot_region    <- par()$plt
-  main_plot_region[2] <- min(main_plot_region[2], legend_plot_region[1] - offset)
-
-  # defensive check for main and legends' plot region
-  dp <- legend_plot_region[2] - legend_plot_region[1]
-  legend_plot_region[1] <- min(main_plot_region[2] + offset, legend_plot_region[1])
-  legend_plot_region[2] <- legend_plot_region[1] + dp
-
-  # store old graphical parameters, and initiate the ones for the main plot
-  old.par <- par(no.readonly = TRUE)
-  par(plt = main_plot_region)
-
-  # add image plot
-  image(mij,
-        xlab = 'Age infector',
-        ylab = 'Age contact',
-        main = main,
-        cex.lab = 1.2,
-        breaks = breaks,
-        col = redc,
-        xaxt = "n",
-        yaxt = "n")
-  
-  # add axis labels
-  plt_ticks <- seq(0, 1, length = nrow(mij))
-  axis(2, at = plt_ticks, labels = c(colnames(mij)), cex.axis = cex.axis, tick = FALSE, las = 1, mgp = c(3, 0.3, 0))
-  axis(1, at = plt_ticks, labels = c(colnames(mij)), cex.axis = cex.axis, tick = FALSE, las = 2, mgp = c(3, 0.3, 0))
-
-  # add numeric values if num.digits != NA and cex.text > 0
-  if (!is.na(num.digits) && !is.na(cex.text) && cex.text > 0) {
-    # format results (rounding/scientific)
-    if (any(max(mij, na.rm = TRUE) > 1)) {
-      mij <- round(mij, digits = num.digits)
-    } else {
-      mij <- format(mij, digits = num.digits)
-    }
-    
-    # get grid centers and add values
-    e_grid <- expand.grid(plt_ticks, plt_ticks)
-    text(e_grid, labels = mij, cex = cex.text)
-  }
-  
-  # set graphical parameters for the legend
-  par(new = TRUE, pty = "m", plt = legend_plot_region, err = -1)
-
-  # include legend bar with axis
-  image(x = 1:2, y = 1:length(breaks), z = midpoints,
-        xaxt = "n", yaxt = "n", xlab = "",
-        ylab = "", col = redc,
-        breaks = breaks)
-  #axis(side = 4, at = 1:length(breaks[-1]), labels= breaks[-1], mgp = c(3, 1, 0), las = 2)
-  mtext("count", side = 2, cex = 0.8)  
-  breaks_label <- breaks
-  if(any(diff(breaks)>1)){
-    sel_bin <- c(FALSE,diff(breaks) > 1)
-    breaks_label_bin <- breaks_label
-    breaks_label_bin[-1] <- paste(breaks_label[-length(breaks_label)], breaks_label[-1], sep=' - ')
-    breaks_label[sel_bin] <- breaks_label_bin[sel_bin]
-  }
-  axis(side = 4, at = 1:length(breaks[-1])+0.5, labels = breaks_label[-1], cex.axis = cex.axis, mgp = c(3, 0.3, 0), las = 2, tick = FALSE)
-  
-  # restore original graphical parameters
-  par(old.par)
-  
+  return(model_out)
 }
-
+  
+  
+  
 # function to print the model results
 print_model_results <- function(log_health,time_start,out_baseline=NA){
   

@@ -26,8 +26,7 @@ param$num_infected_seeds <- 10
 param$bool_add_baseline <- TRUE
 
 # run the IBM
-ibm_out <- run_ibm_location(param)
+ibm_out <- run_ibm(param)
 
 # regression testing
-source('lib/ibm_test.R')
-run_ibm_regression_test(overrule_param_check = TRUE)
+run_ibm_regression_test()

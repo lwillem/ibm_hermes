@@ -52,22 +52,34 @@ param <- list(pop_size           = 2000,  # population size
               bool_show_demographics  = TRUE,   # option to show the demography figures
               bool_add_baseline       = FALSE,  # option to add the prevalence with default param
               bool_return_prevelance  = FALSE,  # option to return the prevalence (and stop)
-              bool_single_plot        = TRUE,   # option to specify the plot layout using sub-panels (or not)
 
               # output_tag
-              output_dir = 'output/ibm_flu' 
+              output_dir = 'output/ibm_flu',
+              plot_mfrow = c(2,2)
               )
   
   return(param)
 }
 
 # function to print the parameter options
-print_model_parameters <- function(){
+print_parameter_names <- function(){
   
   param <- get_default_parameters()
   
   print(names(param))
   
+}
+
+print_model_parameters <- function(param){
+  print('MODEL PARAMETERS')
+  # loop over the given parameters, add name & value
+  for(i_param in names(param)){
+    p_values <- unlist(param[i_param])
+    if(length(p_values)>10){
+      p_values <- c(p_values[1:9],'...')
+    } 
+    print(paste0(i_param,': ',paste(p_values,collapse = ',')))
+  }
 }
 
 # Check parameter equality (exclude a specific subet)

@@ -18,6 +18,8 @@
 #'
 #' @param update_reference Logical. If TRUE, the current model output
 #'   is stored as the new reference output.
+#' @param overrule_param_check to overrule the behaviour that model output
+#' is not checked if parameters differ
 #'
 #' @details
 #' The function performs the following steps:
@@ -38,17 +40,10 @@ run_ibm_regression_test <- function(update_reference = FALSE,
 
   message("Start IBM regression test")
   
-  # Load default parameters
-  params <- get_default_parameters()
-
-  # Apply test-specific parameter settings
-  params$bool_add_baseline      <- FALSE
-  params$bool_show_demographics <- FALSE
-  params$bool_return_prevelance <- TRUE
-
-  # Run the IBM
-  ibm_output <- run_ibm_location(params, verbose = FALSE)
-
+  # Run the IBM with default parameters
+  ibm_output <- run_ibm_default(verbose = FALSE)
+  params <- ibm_output$params
+  
   message("Model execution successfully completed")
 
   reference_file <- paste0(params$output_dir,"_reference/ibm_out_baseline.rds")
