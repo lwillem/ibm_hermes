@@ -50,7 +50,8 @@ ibm_results <- run_ibm(params)
 ibm_results$params$output_dir
 
 # explore population output
-pop_data <- readRDS(dir(params$output_dir, pattern="pop_data", full.names = TRUE))
+pop_data_file <- file.path(ibm_results$params$output_dir,'pop_data.rds')
+pop_data <- readRDS(pop_data_file)
 dim(pop_data)
 head(pop_data)
 

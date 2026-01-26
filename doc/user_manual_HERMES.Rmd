@@ -153,6 +153,12 @@ out <- run_ibm(params, verbose = TRUE)
 # Inspect outputs
 str(out)
 head(out$log_health)
+
+# Inspect final population details
+pop_data_file <- file.path(out$params$output_dir,'pop_data.rds')
+pop_data <- readRDS(pop_data_file)
+dim(pop_data)
+head(pop_data)
 ```
 
 # Regression testing
@@ -174,8 +180,8 @@ University of Antwerp, Belgium
 \newpage
 # Appendix: Install
 
-All R files can be obtained using `download.file()` as explained in 
-https://github.com/lwillem/ibm_hermes/blob/main/install.R or in the code below:
+All R files can be obtained using `download.file()` as explained in our [install.R]( 
+https://github.com/lwillem/ibm_hermes/blob/main/install.R) file or in the code below:
 
 
 ```{r, eval=FALSE}
