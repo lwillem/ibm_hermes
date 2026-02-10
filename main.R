@@ -55,6 +55,25 @@ pop_data <- readRDS(pop_data_file)
 dim(pop_data)
 head(pop_data)
 
+# explore health states output
+health_time_file <- file.path(ibm_results$params$output_dir,'health_time.rds')
+health_time_data <- readRDS(health_time_file)
+dim(health_time_data)
+head(health_time_data$log_health)
+
+# visualization of the evolution in health states over time
+library(ggplot2)
+ggplot(health_time_data$log_health, 
+       aes(x = seq_len(nrow(health_time_data$log_health)), 
+           y = health_time_data$log_health$I)) +
+  geom_line() + 
+  labs(
+    x = "Time (in days)",
+    y = "Number of infected individuals",
+    title = "Evolution of the number of infected individuals"
+  ) +
+  theme_minimal()
+
 # ------------------------------------------------------------------------ -
 # REGRESSION TESTING  ----
 # ------------------------------------------------------------------------ -
