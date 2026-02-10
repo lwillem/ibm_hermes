@@ -65,6 +65,17 @@ head(health_time_data$log_health)
 library(ggplot2)
 ggplot(health_time_data$log_health, 
        aes(x = seq_len(nrow(health_time_data$log_health)), 
+           y = health_time_data$log_health$S)) +
+  geom_line() + 
+  labs(
+    x = "Time (in days)",
+    y = "Proportion of susceptible individuals",
+    title = "Evolution of the proportion of susceptible individuals"
+  ) +
+  theme_minimal()
+
+ggplot(health_time_data$log_health, 
+       aes(x = seq_len(nrow(health_time_data$log_health)), 
            y = health_time_data$log_health$I)) +
   geom_line() + 
   labs(
