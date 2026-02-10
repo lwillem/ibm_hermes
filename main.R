@@ -69,8 +69,8 @@ ggplot(health_time_data$log_health,
   geom_line() + 
   labs(
     x = "Time (in days)",
-    y = "Number of infected individuals",
-    title = "Evolution of the number of infected individuals"
+    y = "Proportion of infected individuals",
+    title = "Evolution of the proportion of infected individuals"
   ) +
   theme_minimal()
 
