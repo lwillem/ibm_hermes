@@ -108,7 +108,7 @@ run_ibm <- function(params, verbose = TRUE) {
   transmission_probs <- compute_transmission_probs(params)
 
   # define health states
-  states <- data.frame(S ="S", I = "I", R = "R",  V = "V", D = "D")
+  states <- data.frame(S = "S", I = "I", R = "R",  V = "V", D = "D")
   
   # Vaccination
   id_vaccinated <- sample(params$pop_size,
