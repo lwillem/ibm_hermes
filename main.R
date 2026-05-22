@@ -7,6 +7,7 @@
 # any warranty; See the LICENCE.txt for more details.
 #
 # Copyright (C) 2026 lwillem, SIMID, UNIVERSITY OF ANTWERP, BELGIUM
+#                    sabrams, SIMID, UHASSELT, UNIVERSITY OF ANTWERP, BELGIUM
 ############################################################################ #
 
 #' Run a HERMES individual-based model scenario
@@ -84,6 +85,12 @@ ggplot(health_time_data$log_health,
     title = "Evolution of the proportion of infected individuals"
   ) +
   theme_minimal()
+
+# ------------------------------------------------------------------------ -
+# DERIVE SEROLOGY ----
+# ------------------------------------------------------------------------ -
+
+# explore serological data output
 
 # ------------------------------------------------------------------------ -
 # REGRESSION TESTING  ----
