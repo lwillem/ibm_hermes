@@ -36,10 +36,10 @@ source('lib/ibm_core.R')
 params <- get_default_parameters()
 
 # Optional scenario-specific overrides
-# print_model_parameters()
-# params$num_infected_seeds <- 10
-# params$bool_add_baseline  <- TRUE
-# params$pop_size <- 1e4
+print_model_parameters()
+params$num_infected_seeds <- 10
+params$bool_add_baseline  <- TRUE
+params$pop_size <- 1e4
 
 # ------------------------------------------------------------------------ -
 # RUN MODEL ----
@@ -62,9 +62,13 @@ health_time_data <- readRDS(health_time_file)
 dim(health_time_data)
 head(health_time_data$log_health)
 
-# visualization of the evolution in health states over time
+# ------------------------------------------------------------------------ -
+# VISUALIZE MODEL OUTPUT ----
+# ------------------------------------------------------------------------ -
+
+# visualization of the evolution of susceptible individuals over time
 library(ggplot2)
-ggplot(health_time_data$log_health, 
+p1 <- ggplot(health_time_data$log_health, 
        aes(x = seq_len(nrow(health_time_data$log_health)), 
            y = health_time_data$log_health$S)) +
   geom_line() + 
@@ -75,7 +79,23 @@ ggplot(health_time_data$log_health,
   ) +
   theme_minimal()
 
-ggplot(health_time_data$log_health, 
+
+fig_dir <- file.path(ibm_results$params$output_dir, 'figures')
+
+if (!dir.exists(fig_dir)) {
+  dir.create(fig_dir, recursive = TRUE)
+}
+
+# Save plot
+ggsave(
+  filename = file.path(fig_dir, "evolution_susceptible.png"),
+  plot = p1,
+  width = 6,
+  height = 4
+)
+
+# visualization of the evolution of infected individuals over time
+p2 = ggplot(health_time_data$log_health, 
        aes(x = seq_len(nrow(health_time_data$log_health)), 
            y = health_time_data$log_health$I)) +
   geom_line() + 
@@ -85,6 +105,14 @@ ggplot(health_time_data$log_health,
     title = "Evolution of the proportion of infected individuals"
   ) +
   theme_minimal()
+
+# Save plot
+ggsave(
+  filename = file.path(fig_dir, "evolution_infected.png"),
+  plot = p2,
+  width = 6,
+  height = 4
+)
 
 # ------------------------------------------------------------------------ -
 # DERIVE SEROLOGY ----
