@@ -106,6 +106,7 @@ run_ibm <- function(params, verbose = TRUE) {
   time_start <- Sys.time()
   set.seed(params$rng_seed)
 
+  # initialize the population
   pop_data <- create_population_matrix(params)
 
   transmission_probs <- compute_transmission_probs(params)
@@ -113,18 +114,18 @@ run_ibm <- function(params, verbose = TRUE) {
   # define health states
   states <- data.frame(S = "S", I = "I", R = "R",  V = "V", D = "D")
   
-  # Vaccination
+  # vaccination
   id_vaccinated <- sample(params$pop_size,
                           params$pop_size * params$vaccine_coverage)
   pop_data$health[id_vaccinated] <- states$V
 
-  # Seed infections
+  # seed infections
   seed_ids <- sample(which(pop_data$health == states$S),
                      params$num_infected_seeds)
   pop_data$health[seed_ids] <- states$I
   pop_data$time_of_infection[seed_ids] <- 0
 
-  # Recovery and mortality probabilities
+  # recovery and mortality probabilities
   prob_recovery <- 1 - exp(-1 / params$num_days_infected)
   prob_mortality_general <- 1 - exp(-params$general_mortality_rate)
   prob_mortality_disease <- 1 - exp(-params$disease_mortality_rate)
@@ -203,7 +204,6 @@ run_ibm <- function(params, verbose = TRUE) {
     log_health_matrix[, day] <- pop_data$health
   }
 
-  
   ## Output ----
   # -------------------------- -
   log_health <- as.data.frame(sapply(

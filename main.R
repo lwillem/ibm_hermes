@@ -36,10 +36,12 @@ source('lib/ibm_core.R')
 params <- get_default_parameters()
 
 # Optional scenario-specific overrides
-print_model_parameters()
+print_model_parameters(params)
+params$output_dir <- output/ibm_modified
+params$num_days <- 20
 params$num_infected_seeds <- 10
 params$bool_add_baseline  <- TRUE
-params$pop_size <- 1e4
+params$pop_size <- 1e5
 
 # ------------------------------------------------------------------------ -
 # RUN MODEL ----
