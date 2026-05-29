@@ -37,11 +37,11 @@ params <- get_default_parameters()
 
 # Optional scenario-specific overrides
 print_model_parameters(params)
-params$output_dir <- output/ibm_modified
+params$output_dir <- "output/ibm_modified"
 params$num_days <- 20
 params$num_infected_seeds <- 10
 params$bool_add_baseline  <- TRUE
-params$pop_size <- 1e5
+params$pop_size <- 1e4
 
 # ------------------------------------------------------------------------ -
 # RUN MODEL ----
@@ -120,7 +120,100 @@ ggsave(
 # DERIVE SEROLOGY ----
 # ------------------------------------------------------------------------ -
 
+# Central parameter object for serology generation
+sero_params <- get_default_sero_parameters()
+
+# Serological data generation
+sero_results <- sample_serological_data(pop_data, sero_params, verbose)
+
 # explore serological data output
+sero_data_file <- file.path(sero_results$params$output_dir,'sero_data.rds')
+sero_data <- readRDS(sero_data_file)
+dim(sero_data)
+head(sero_data)
+
+# ------------------------------------------------------------------------ -
+# VISUALIZE SEROLOGICAL SURVEY DATA ----
+# ------------------------------------------------------------------------ -
+
+# visualization of the seroprevalence by age 
+sero_plot_df <- data.frame(age = sort(unique(round(sero_data$age))),
+                           seroprev = tapply(sero_data$sero_status, 
+                                              round(sero_data$age), 
+                                              mean))
+
+library(ggplot2)
+p1 <- ggplot(sero_plot_df, 
+             aes(x = age, 
+                 y = seroprev)) +
+  geom_point() + 
+  labs(
+    x = "Age (in years)",
+    y = "Proportion of seropositive individuals",
+    title = "Seroprevalence by age"
+  ) +
+  theme_minimal()
+
+fig_dir <- file.path(sero_results$params$output_dir, 'figures')
+
+if (!dir.exists(fig_dir)) {
+  dir.create(fig_dir, recursive = TRUE)
+}
+
+# Save plot
+ggsave(
+  filename = file.path(fig_dir, paste0("seroprevalence_time",sero_results$params$sampling_time,".png")),
+  plot = p1,
+  width = 6,
+  height = 4
+)
+
+# visualization of the seroprevalence by age group 
+seroprev_by_age_group <- tapply(sero_data$sero_status, 
+                                sero_data$age_group, 
+                                mean)
+npos_by_age_group <- tapply(sero_data$sero_status, 
+                            sero_data$age_group, 
+                            sum)
+n_by_age_group <- tapply(sero_data$sero_status, 
+                         sero_data$age_group, 
+                         length)
+
+z <- 1.96
+denominator <- 1 + ((z**2)/n_by_age_group)
+center_adj <- seroprev_by_age_group + (z**2/(2*n_by_age_group))
+std_adj = sqrt((seroprev_by_age_group*(1 - seroprev_by_age_group)/n_by_age_group) + 
+                 (z**2/(4*n_by_age_group**2)))
+
+seroprev_by_age_group_ll = (center_adj - z*std_adj)/denominator
+seroprev_by_age_group_ul = (center_adj + z*std_adj)/denominator
+
+sero_plot_df2 <- data.frame(age_group = names(seroprev_by_age_group),
+                            seroprev = seroprev_by_age_group,
+                            seroprev_ll = seroprev_by_age_group_ll,
+                            seroprev_ul = seroprev_by_age_group_ul)
+
+p2 <- ggplot(sero_plot_df2, 
+             aes(x = factor(age_group), 
+                 y = seroprev)) +
+  geom_point() + 
+  labs(
+    x = "Age (in years)",
+    y = "Proportion of seropositive individuals",
+    title = "Seroprevalence by age group"
+  ) +
+  geom_errorbar(aes(ymin=seroprev_ll, ymax=seroprev_ul), width=.2,
+                position=position_dodge(.9)) +
+  theme_minimal() 
+
+
+# Save plot
+ggsave(
+  filename = file.path(fig_dir, paste0("seroprevalence_age_group_time",sero_results$params$sampling_time,".png")),
+  plot = p2,
+  width = 6,
+  height = 4
+)
 
 # ------------------------------------------------------------------------ -
 # REGRESSION TESTING  ----

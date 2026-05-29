@@ -24,7 +24,8 @@ source('lib/ibm_parameters.R')
 source('lib/ibm_plot.R')
 source('lib/ibm_test.R')
 
-#source('lib/ibm_serology.R')
+source('lib/ibm_serology.R')
+source('lib/ibm_sero_parameters.R')
 #source('lib/ibm_contact_tracing.R')
 
 # ------------------------------------------------------------------------ -
