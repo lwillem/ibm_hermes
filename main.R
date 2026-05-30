@@ -37,10 +37,13 @@ params <- get_default_parameters()
 
 # Optional scenario-specific overrides
 print_model_parameters(params)
+
+# New settings
 params$output_dir <- "output/ibm_modified"
 params$num_days <- 20
 params$num_infected_seeds <- 10
 params$bool_add_baseline  <- TRUE
+params$general_mortality_rate <- NULL
 params$pop_size <- 1e4
 
 # ------------------------------------------------------------------------ -
@@ -117,6 +120,34 @@ ggsave(
 )
 
 # ------------------------------------------------------------------------ -
+# VISUALIZE INCUBATION PERIOD DISTRIBUTION ----
+# ------------------------------------------------------------------------ -
+
+# visualization of continuous antibody titer data 
+p1 <- ggplot(subset(pop_data, !is.na(symptom_onset)), aes(x = symptom_onset)) + 
+  geom_bar() + 
+  labs(
+    x = "Symptom onset (days since infection)",
+    y = "Number of individuals",
+    title = "Incubation period"
+  ) +
+  theme_minimal()
+
+fig_dir <- file.path(ibm_results$params$output_dir, 'figures')
+
+if (!dir.exists(fig_dir)) {
+  dir.create(fig_dir, recursive = TRUE)
+}
+
+# Save plot
+ggsave(
+  filename = file.path(fig_dir, paste0("incubation_period", ".png")),
+  plot = p1,
+  width = 6,
+  height = 4
+)
+
+# ------------------------------------------------------------------------ -
 # DERIVE SEROLOGY ----
 # ------------------------------------------------------------------------ -
 
@@ -188,10 +219,16 @@ std_adj = sqrt((seroprev_by_age_group*(1 - seroprev_by_age_group)/n_by_age_group
 seroprev_by_age_group_ll = (center_adj - z*std_adj)/denominator
 seroprev_by_age_group_ul = (center_adj + z*std_adj)/denominator
 
+sd_seroprev_by_age_group = sqrt((seroprev_by_age_group*(1 - seroprev_by_age_group))/n_by_age_group)
+seroprev_by_age_group_ll_asymp = seroprev_by_age_group - z*sd_seroprev_by_age_group
+seroprev_by_age_group_ul_asymp = seroprev_by_age_group + z*sd_seroprev_by_age_group
+
 sero_plot_df2 <- data.frame(age_group = names(seroprev_by_age_group),
                             seroprev = seroprev_by_age_group,
                             seroprev_ll = seroprev_by_age_group_ll,
-                            seroprev_ul = seroprev_by_age_group_ul)
+                            seroprev_ul = seroprev_by_age_group_ul,
+                            seroprev_ll_asymp = seroprev_by_age_group_ll_asymp,
+                            seroprev_ul_asymp = seroprev_by_age_group_ul_asymp)
 
 p2 <- ggplot(sero_plot_df2, 
              aes(x = factor(age_group), 
@@ -204,13 +241,32 @@ p2 <- ggplot(sero_plot_df2,
   ) +
   geom_errorbar(aes(ymin=seroprev_ll, ymax=seroprev_ul), width=.2,
                 position=position_dodge(.9)) +
+  geom_errorbar(aes(ymin=seroprev_ll_asymp, ymax=seroprev_ul_asymp), width=.2, col = "orange",
+                position=position_dodge(.9)) +
   theme_minimal() 
-
 
 # Save plot
 ggsave(
   filename = file.path(fig_dir, paste0("seroprevalence_age_group_time",sero_results$params$sampling_time,".png")),
   plot = p2,
+  width = 6,
+  height = 4
+)
+
+# visualization of continuous antibody titer data 
+p3 <- ggplot(sero_data, aes(x = log_igg)) + 
+  geom_histogram() + 
+  labs(
+    x = "Log IgG titer",
+    y = "Number of seropositive individuals",
+    title = "Antibody titer data"
+  ) +
+  theme_minimal()
+
+# Save plot
+ggsave(
+  filename = file.path(fig_dir, paste0("antibody_titer_data_time",sero_results$params$sampling_time,".png")),
+  plot = p3,
   width = 6,
   height = 4
 )

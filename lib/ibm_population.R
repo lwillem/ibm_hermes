@@ -7,6 +7,7 @@
 # any warranty; See the LICENCE.txt for more details.
 #
 # Copyright (C) 2026 lwillem, SIMID, UNIVERSITY OF ANTWERP, BELGIUM
+#                    sabrams, SIMID, UHASSELT, UNIVERSITY OF ANTWERP, BELGIUM
 ############################################################################ #
 
 #' Create a synthetic population
@@ -19,6 +20,7 @@ create_population_matrix <- function(params) {
 
   adult1 <- data.frame(
     age = sample(params$ages_adult, num_households, replace = TRUE),
+    sex = sample(c("Female", "Male"), size = 1, prob = c(0.508, 0.492), replace = TRUE),
     hh_id = seq_len(num_households),
     hh_role = 1
   )
@@ -27,6 +29,7 @@ create_population_matrix <- function(params) {
     age = adult1$age +
       sample(-params$adult_age_tolerance:params$adult_age_tolerance,
              num_households, replace = TRUE),
+    sex = sample(c("Female", "Male"), size = 1, prob = c(0.508, 0.492), replace = TRUE),
     hh_id = seq_len(num_households),
     hh_role = 2
   )
@@ -34,6 +37,7 @@ create_population_matrix <- function(params) {
   child1 <- data.frame(
     age = pmax(adult1$age, adult2$age) -
       sample(params$household_age_gap, num_households, replace = TRUE),
+    sex = sample(c("Female", "Male"), size = 1, prob = c(0.508, 0.492), replace = TRUE),
     hh_id = seq_len(num_households),
     hh_role = 3
   )
@@ -41,6 +45,7 @@ create_population_matrix <- function(params) {
   child2 <- data.frame(
     age = child1$age -
       sample(seq_len(params$child_age_tolerance), num_households, replace = TRUE),
+    sex = sample(c("Female", "Male"), size = 1, prob = c(0.508, 0.492), replace = TRUE),
     hh_id = seq_len(num_households),
     hh_role = 4
   )
@@ -68,6 +73,12 @@ create_population_matrix <- function(params) {
     health = "S",
     infector = NA,
     time_of_infection = NA,
+    time_of_natural_death = NA,
+    time_of_death = NA,
+    age_natural_death = NA,
+    symptom_onset = NA,
+    time_of_symptom_onset = NA,
+    time_of_hospitalization = NA,
     generation_interval = 0,
     secondary_cases = 0,
     stringsAsFactors = FALSE
@@ -77,7 +88,7 @@ create_population_matrix <- function(params) {
     plot_population_histograms(pop_data)
   }
 
-  # remove househole role
+  # remove household role
   pop_data$hh_role <- NULL
   
   return(pop_data)

@@ -11,6 +11,7 @@
 # any warranty; See the LICENCE.txt for more details.
 #
 # Copyright (C) 2026 lwillem, SIMID, UNIVERSITY OF ANTWERP, BELGIUM
+#                    sabrams, SIMID, UHASSELT, UNIVERSITY OF ANTWERP, BELGIUM
 ############################################################################ #
 
 # ------------------------------------------------------------------------ -
@@ -18,11 +19,14 @@
 # ------------------------------------------------------------------------ -
 
 library(progress)
+library(extraDistr)
 
 source('lib/ibm_population.R')
 source('lib/ibm_parameters.R')
 source('lib/ibm_plot.R')
 source('lib/ibm_test.R')
+
+source('lib/ibm_pop_death.R')
 
 source('lib/ibm_serology.R')
 source('lib/ibm_sero_parameters.R')
@@ -103,7 +107,6 @@ run_ibm <- function(params, verbose = TRUE) {
 
   ## Initialisation ----
   # ------------------------- -
-
   time_start <- Sys.time()
   set.seed(params$rng_seed)
 
@@ -128,16 +131,35 @@ run_ibm <- function(params, verbose = TRUE) {
 
   # recovery and mortality probabilities
   prob_recovery <- 1 - exp(-1 / params$num_days_infected)
-  prob_mortality_general <- 1 - exp(-params$general_mortality_rate)
+  prob_hospitalized <- params$prob_hospital*(1 - exp(-1 / params$num_days_before_hospitalized))
   prob_mortality_disease <- 1 - exp(-params$disease_mortality_rate)
-
+  if (!is.null(params$general_mortality_rate)){
+    prob_mortality_general <- 1 - exp(-params$general_mortality_rate)}
+  
+  # natural mortality
+  if (is.null(params$general_mortality_rate)){
+    prob_mortality_general <- rep(0, length(prob_mortality_disease))
+    for (id in 1:params$pop_size){
+      if (pop_data$sex[id] == "Male"){
+        pop_data$age_natural_death[id] <- gen_pop(params$date, pop_data$age[id], mlt)
+      } else {
+        pop_data$age_natural_death[id] <- gen_pop(params$date, pop_data$age[id], flt)
+      }
+    }
+    
+    if (sum(is.na(pop_data$age_natural_death)) > 0) {
+      warning("Population death times are not generated correctly")
+      return(NULL)
+    }
+  }
+  
+  # log health matrix
   log_health_matrix <- matrix(
     NA, nrow = params$pop_size, ncol = params$num_days
   )
 
   ## Model loop ----
   # ------------------------ -
-
   pb <- progress_bar$new(
     format = paste0("Run ", basename(params$output_dir),
                     ": [:bar] :percent ETA: :eta"),
@@ -149,6 +171,7 @@ run_ibm <- function(params, verbose = TRUE) {
     pb$tick()
 
     is_infected <- pop_data$health == states$I
+    is_death <- pop_data$health == states$D
     infected_ids <- which(is_infected)
 
     for (i in infected_ids) {
@@ -182,6 +205,13 @@ run_ibm <- function(params, verbose = TRUE) {
       new_infections <- rbinom(
         params$pop_size, size = 1, prob = prob_infection
       ) == 1
+      
+      prob_symptoms <- params$prop_symptoms
+      symptoms <- rbinom(params$pop_size, size = 1, prob = prob_symptoms) == 1
+      symptom_onsets <- rdgamma(
+        params$pop_size, scale = params$scale_symptom_onset, 
+        shape = params$shape_symptom_onset
+      )
 
       pop_data$health[new_infections] <- states$I
       pop_data$infector[new_infections] <- i
@@ -191,17 +221,41 @@ run_ibm <- function(params, verbose = TRUE) {
         pop_data$secondary_cases[i] + sum(new_infections)
       pop_data$generation_interval[new_infections] <-
         day - pop_data$time_of_infection[i]
+      
+      pop_data$symptom_onset[new_infections & symptoms] <- symptom_onsets[new_infections & symptoms] 
+      pop_data$time_of_symptom_onset[new_infections & symptoms] <- pop_data$symptom_onset[new_infections & symptoms] + day 
     }
 
+    # Hospitalization
+    is_symptoms <- (pop_data$health != states$R) & (pop_data$time_of_symptom_onset < day)
+    is_hospitalized <- !is.na(pop_data$time_of_hospitalization)
+      
+    hospitalized <- is_symptoms & (!is_hospitalized) &
+      rbinom(params$pop_size, size = 1, prob_hospitalized) == 1
+    pop_data$time_of_hospitalization[hospitalized] <- day
+    
+    # Recovery (both within and outside hospital)
     recovered <- is_infected &
       rbinom(params$pop_size, 1, prob_recovery) == 1
     pop_data$health[recovered] <- states$R
 
+    # In case general mortality rates are provided, no distinction between
+    # natural and disease-related mortality are made; in case of absence
+    # of general mortality rates (but population death times) the death times
+    # solely represent disease-related mortality. 
     prob_mortality <- prob_mortality_general[pop_data$age] +
       is_infected * prob_mortality_disease[pop_data$age]
     deaths <- rbinom(params$pop_size, 1, prob_mortality) == 1
-    pop_data$health[deaths] <- states$D
+    pop_data$health[!is_death & deaths] <- states$D
+    pop_data$time_of_death[!is_death & deaths] <- day
 
+    if (is.null(params$general_mortality_rate)){
+      current_ages <- pop_data$age + (day/365)
+      natural_deaths <- (!is_death) & ((current_ages > pop_data$age_natural_death) == 1)
+      pop_data$health[natural_deaths] <- states$D
+      pop_data$time_of_natural_death[natural_deaths] <- day
+    }
+    
     log_health_matrix[, day] <- pop_data$health
   }
 

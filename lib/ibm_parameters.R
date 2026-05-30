@@ -19,6 +19,9 @@
 get_default_parameters <- function() {
 
   params <- list(
+    # calendar time
+    date               = 2026,
+    
     # population and time
     pop_size           = 2000,
     num_days           = 50,
@@ -27,7 +30,18 @@ get_default_parameters <- function() {
     # vaccination
     vaccine_coverage        = 0.2,
     vaccine_effectiveness   = 0.8,
-
+    
+    # incubation period
+    shape_symptom_onset  = 10,
+    scale_symptom_onset  = 0.5,
+    
+    # symptomatology
+    prop_symptoms = 0.8,
+    
+    # hospitalisation after symptom onset
+    prob_hospital                = 0.3,
+    num_days_before_hospitalized = 2,
+    
     # disease natural history
     num_days_infected = 7,
     transmission_prob = 0.1,

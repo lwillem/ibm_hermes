@@ -10,7 +10,7 @@
 ############################################################################ #
 
 # ------------------------------------------------------------------------ -
-# MAIN MODEL FUNCTION ----
+# MAIN DATA GENERATING FUNCTION ----
 # ------------------------------------------------------------------------ -
 
 #' Cross-sectional serological survey data
@@ -26,23 +26,37 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
   ## Reproducibility ----
   # ------------------------- -
   set.seed(sero_params$rng_seed)
-
-  ## Select individuals ----
-  # ------------------------ -
-  sample_ids <- sample(sero_params$n)
-  ind_ids <- rownames(pop_data)[sample_ids]
+  
+  ## Defensive checks ----
+  # -------------------------- -
+  is_alive = is.na(pop_data$time_of_death) | (pop_data$time_of_death > sero_params$sampling_time)
+  if (sero_params$n > sum(is_alive)){
+    warning("Serological survey sample size is too large")
+    return(NULL)
+  }
+    
+  ## Subset data from individuals that are alive
+  #--------------------------------------------- -
+  ss_pop_data = pop_data[is_alive, ]
+  
+  ## Select individuals if still alive ----
+  # ------------------------------------- -
+  sample_ids <- sample(nrow(ss_pop_data), size = sero_params$n)
+  ind_ids <- rownames(ss_pop_data)[sample_ids]
   
   ## Age at sampling ----
   # ------------------------ -
-  age_at_sampling <- pop_data$age[sample_ids] + sero_params$sampling_time
+  age_at_sampling <- ss_pop_data$age[sample_ids] + sero_params$sampling_time
   
   ## Serological data ---
   # ------------------------ - 
   age_group <- vector(length = sero_params$n)
   status <- vector(length = sero_params$n)
   ab_titer <- vector(length = sero_params$n)
-  tsi <- vector(length = sero_params$n)
   toi <- vector(length = sero_params$n)
+  tso <- vector(length = sero_params$n)
+  tsi <- vector(length = sero_params$n)
+  tsso <- vector(length = sero_params$n)
   
   age_group_id <- findInterval(age_at_sampling, seq(0, 100, 10))
   age_group_vec <- c("[0, 10)", "[10, 20)", "[20, 30)", "[30, 40)",
@@ -51,20 +65,24 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
     
   for (i in 1:length(sample_ids)){
     age_group[i] <- age_group_vec[age_group_id[i]]
-    toi[i] = pop_data[sample_ids[i], ]$time_of_infection
+    toi[i] = ss_pop_data[sample_ids[i], ]$time_of_infection
+    tso[i] = ss_pop_data[sample_ids[i], ]$time_of_symptom_onset
     tsi[i] = ifelse(is.na(toi[i]), -10, max(age_at_sampling[i] - toi[i], 0))
+    tsso[i] = ifelse(is.na(tso[i]), -10, max(age_at_sampling[i] - tso[i], 0))
     status[i] = as.numeric(tsi[i] >= 0)
     ab_titer[i] = status[i]*max(sero_params$LLOD, 
                                 rnorm(1, mean = sero_params$peak*exp(-sero_params$decay*tsi[i]), 
                                               sd = sero_params$sigma))
   }
-  
+
   ## Output ----
   # -------------------------- -
   sero_data <- data.frame(ind_id = sample_ids, age = age_at_sampling, age_group = age_group,
-                          time_of_infection = toi, time_since_infection = tsi/365,
+                          time_of_infection = toi, 
+                          time_since_infection = ifelse(tsi < 0, NA, tsi/365),
+                          time_since_symptom_onset = ifelse(tsso < 0, NA, tsso/365),
                           sero_status = status, log_igg = ab_titer)
-  head(sero_data)
+
   saveRDS(sero_data,
           file = file.path(sero_params$output_dir, "sero_data.rds"))
   
