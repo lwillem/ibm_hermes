@@ -521,7 +521,7 @@ rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention, ve
     }
     
     new_params <- params
-    new_params$num_days <- nprev_days + params$num_days
+    new_params$num_days <- nprev_days + params$num_days 
       
     par(mfrow = params$plot_mfrow)
     plot_health_states(log_health, params, out_baseline = baseline)
