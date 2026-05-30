@@ -72,6 +72,8 @@ create_population_matrix <- function(params) {
     pop_data,
     health = "S",
     infector = NA,
+    infector_id = NA,
+    infector_age = NA,
     time_of_infection = NA,
     time_of_natural_death = NA,
     time_of_death = NA,

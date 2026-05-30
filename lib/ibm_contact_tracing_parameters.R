@@ -9,42 +9,42 @@
 # Copyright (C) 2026 lwillem, SIMID, UNIVERSITY OF ANTWERP, BELGIUM
 ############################################################################ #
 
-#' Default serological sampling parameters
+#' Default sampling parameters related to the contact tracing data
 #'
 #' Creates and returns a list containing all parameters controlling
-#' cross-sectional serological survey sampling.
+#' contact tracing.
 #'
 #' @return A named list of model parameters.
 #' @export
-get_default_sero_parameters <- function() {
-
+get_default_contact_tracing_parameters <- function() {
+  
   params <- list(
-    # serological survey sample size
-    n              = 500,
-    sampling_time  = 10,
+    # number of infector-infectee pairs
+    n              = 50,
     
-    # antibody titers (in IU/mL)
-    peak    = 100,
-    decay   = 0.02,
-    sigma   = 0.5,
-    LLOD    = log(5),
-      
+    # contact tracing window
+    start_contact_tracing  = 10,
+    end_contact_tracing  = 20,
+    
+    # sampling design
+    design = "chains",
+    
     # random number generation
-    rng_seed = 062026,
-
+    rng_seed = 072026,
+    
     # visualisation and output
     bool_show_seroprevelance = FALSE,
-
+    
     output_dir = "output/ibm_modified",
     plot_mfrow = c(1, 1)
   )
-
+  
   return(params)
 }
 
 #' Print available parameter names
 #'
 #' Convenience function to inspect configurable parameters.
-print_sero_parameter_names <- function() {
-  print(names(get_default_sero_parameters()))
+print_contact_tracing_parameter_names <- function() {
+  print(names(get_default_contact_tracing_parameters()))
 }

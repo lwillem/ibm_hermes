@@ -30,6 +30,7 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
   ## Defensive checks ----
   # -------------------------- -
   is_alive = is.na(pop_data$time_of_death) | (pop_data$time_of_death > sero_params$sampling_time)
+  
   if (sero_params$n > sum(is_alive)){
     warning("Serological survey sample size is too large")
     return(NULL)
@@ -43,11 +44,11 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
   # ------------------------------------- -
   sample_ids <- sample(nrow(ss_pop_data), size = sero_params$n)
   ind_ids <- rownames(ss_pop_data)[sample_ids]
-  
+
   ## Age at sampling ----
   # ------------------------ -
-  age_at_sampling <- ss_pop_data$age[sample_ids] + sero_params$sampling_time
-  
+  age_at_sampling <- ss_pop_data$age[sample_ids] + (sero_params$sampling_time/365)
+
   ## Serological data ---
   # ------------------------ - 
   age_group <- vector(length = sero_params$n)
@@ -74,10 +75,10 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
                                 rnorm(1, mean = sero_params$peak*exp(-sero_params$decay*tsi[i]), 
                                               sd = sero_params$sigma))
   }
-
+  
   ## Output ----
   # -------------------------- -
-  sero_data <- data.frame(ind_id = sample_ids, age = age_at_sampling, age_group = age_group,
+  sero_data <- data.frame(ind_id = ind_ids, age = age_at_sampling, age_group = age_group,
                           time_of_infection = toi, 
                           time_since_infection = ifelse(tsi < 0, NA, tsi/365),
                           time_since_symptom_onset = ifelse(tsso < 0, NA, tsso/365),

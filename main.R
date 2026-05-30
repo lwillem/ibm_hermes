@@ -148,6 +148,74 @@ ggsave(
 )
 
 # ------------------------------------------------------------------------ -
+# DERIVE INCIDENCE DATA ----
+# ------------------------------------------------------------------------ -
+
+# Central parameter object for delayed incidence data generation
+delay_params <- get_default_delay_parameters()
+
+# Incidence data generation with delays
+incidence_results <- obtain_incidence_data(pop_data, delay_params)
+
+# explore contact tracing data output
+incidence_data_file <- file.path(incidence_results$params$output_dir,'incidence_data.rds')
+incidence_data <- readRDS(incidence_data_file)
+dim(incidence_data)
+head(incidence_data)
+
+# ------------------------------------------------------------------------ -
+# VISUALIZE INCIDENCE DATA ----
+# ------------------------------------------------------------------------ -
+
+# visualization of the incidence of cases in relation to time of reporting 
+tab <- table(incidence_data$time_of_reporting)
+incidence_plot_df <- data.frame(time = sort(unique(incidence_data$time_of_reporting)),
+                                new_cases = as.vector(tab))
+
+library(ggplot2)
+p1 <- ggplot(incidence_plot_df, 
+             aes(x = time, 
+                 y = new_cases)) +
+  geom_point() + 
+  labs(
+    x = "Time (in days since start of outbreak)",
+    y = "Number of new cases",
+    title = "Total reported incidence"
+  ) +
+  theme_minimal()
+
+fig_dir <- file.path(incidence_results$params$output_dir, 'figures')
+
+if (!dir.exists(fig_dir)) {
+  dir.create(fig_dir, recursive = TRUE)
+}
+
+# Save plot
+ggsave(
+  filename = file.path(fig_dir, "total_reported_incidence_time.png"),
+  plot = p1,
+  width = 6,
+  height = 4
+)
+
+
+# ------------------------------------------------------------------------ -
+# DERIVE CONTACT TRACING DATA ----
+# ------------------------------------------------------------------------ -
+
+# Central parameter object for contact tracing
+contact_tracing_params <- get_default_contact_tracing_parameters()
+
+# Contact tracing data generation
+contact_tracing_results <- sample_contact_tracing_data(pop_data, contact_tracing_params, verbose)
+
+# explore contact tracing data output
+contact_tracing_data_file <- file.path(contact_tracing_results$params$output_dir,'contact_tracing_data.rds')
+contact_tracing_data <- readRDS(contact_tracing_data_file)
+dim(contact_tracing_data)
+head(contact_tracing_data)
+
+# ------------------------------------------------------------------------ -
 # DERIVE SEROLOGY ----
 # ------------------------------------------------------------------------ -
 

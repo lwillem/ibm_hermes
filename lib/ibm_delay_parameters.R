@@ -9,34 +9,30 @@
 # Copyright (C) 2026 lwillem, SIMID, UNIVERSITY OF ANTWERP, BELGIUM
 ############################################################################ #
 
-#' Default serological sampling parameters
+#' Default parameters related to reporting delay distribution
 #'
 #' Creates and returns a list containing all parameters controlling
-#' cross-sectional serological survey sampling.
+#' the reporting delay process.
 #'
 #' @return A named list of model parameters.
 #' @export
-get_default_sero_parameters <- function() {
+get_default_delay_parameters <- function() {
 
   params <- list(
-    # serological survey sample size
-    n              = 500,
-    sampling_time  = 10,
+    # delay parameters
+    mean = 2,
+    max_delay = 6,
     
-    # antibody titers (in IU/mL)
-    peak    = 100,
-    decay   = 0.02,
-    sigma   = 0.5,
-    LLOD    = log(5),
-      
-    # random number generation
-    rng_seed = 062026,
-
+    # missingness in symptomatic cases
+    prob_missing = 0.1,
+    
     # visualisation and output
-    bool_show_seroprevelance = FALSE,
+    bool_show_demographics = TRUE,
+    bool_add_baseline      = FALSE,
+    bool_return_prevelance = FALSE,
 
     output_dir = "output/ibm_modified",
-    plot_mfrow = c(1, 1)
+    plot_mfrow = c(2, 2)
   )
 
   return(params)
@@ -45,6 +41,6 @@ get_default_sero_parameters <- function() {
 #' Print available parameter names
 #'
 #' Convenience function to inspect configurable parameters.
-print_sero_parameter_names <- function() {
-  print(names(get_default_sero_parameters()))
+print_delay_parameter_names <- function() {
+  print(names(get_default_delay_parameters()))
 }
