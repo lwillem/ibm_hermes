@@ -272,6 +272,7 @@ saveRDS(pop_data,
 # explore population output
 pop_data_file <- file.path(health_time_data$params$output_dir, "final_pop_data.rds")
 final_pop_data <- readRDS(pop_data_file)
+head(final_pop_data)
 
 # explore health states output
 health_time_file <- file.path(health_time_data$params$output_dir, "final_health_time.rds")
@@ -409,12 +410,13 @@ saveRDS(final_sero_data1,
 saveRDS(final_sero_data2,
         file = file.path(sero_params2$output_dir, "final_sero_data_time20.rds"))
 saveRDS(final_sero_data3,
-        file = file.path(sero_params2$output_dir, "final_sero_data_time30.rds"))
-
-head(final_sero_data1)
+        file = file.path(sero_params3$output_dir, "final_sero_data_time30.rds"))
 
 # visualization of the seroprevalence by age group 
 final_sero_data = rbind(final_sero_data1, final_sero_data2, final_sero_data3)
+saveRDS(final_sero_data,
+        file = file.path(sero_params1$output_dir, "final_sero_data.rds"))
+head(final_sero_data)
 
 seroprev_by_age_group <- tapply(final_sero_data$sero_status, 
                                 list(final_sero_data$age_group, final_sero_data$time_of_sampling), mean)
@@ -465,3 +467,4 @@ ggsave(
   width = 6,
   height = 4
 )
+
