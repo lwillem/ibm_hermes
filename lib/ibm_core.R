@@ -81,11 +81,12 @@ is_susceptible <- function(health_vector, states) {
 #' school, workplace, and community transmission.
 #'
 #' @param params List of model parameters.
+#' @param default_params Comparing results with default scenario.
 #' @param verbose Logical; if TRUE, plots and summaries are produced.
 #'
 #' @return A list with elements \code{log_health} and \code{params}.
 #' @export
-run_ibm <- function(params, verbose = TRUE) {
+run_ibm <- function(params, default_params = NULL, verbose = TRUE) {
 
   ## Defensive checks ----
   # -------------------------- -
@@ -125,7 +126,8 @@ run_ibm <- function(params, verbose = TRUE) {
   id_vaccinated <- sample(params$pop_size,
                           params$pop_size * params$vaccine_coverage)
   pop_data$health[id_vaccinated] <- states$V
-
+  pop_data$time_of_vaccination[id_vaccinated] <- 0
+    
   # seed infections
   seed_ids <- sample(which(pop_data$health == states$S),
                      params$num_infected_seeds)
@@ -273,7 +275,7 @@ run_ibm <- function(params, verbose = TRUE) {
   if (verbose) {
 
     baseline <- if (params$bool_add_baseline) {
-      run_ibm_default(verbose = FALSE)
+      run_ibm_default(default_params, verbose = FALSE)
     } else {
       NA
     }
@@ -303,9 +305,9 @@ run_ibm <- function(params, verbose = TRUE) {
 #' Run baseline model with default parameters
 #'
 #' @param verbose Logical to disable all output 
-run_ibm_default <- function(verbose = FALSE) {
+run_ibm_default <- function(default_params = NULL, verbose = FALSE) {
 
-  default_params <- get_default_parameters()
+  if (is.null(default_params)) default_params <- get_default_parameters()
   default_params$bool_add_baseline <- FALSE
   default_params$bool_show_demographics <- FALSE
   default_params$output_dir <-
@@ -362,12 +364,17 @@ print_model_results <- function(log_health,time_start,out_baseline=NA){
 #'
 #' @return A list with elements \code{log_health} and \code{params}.
 #' @export
-rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention, verbose = TRUE) {
+rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention, 
+                      default_params = NULL, verbose = TRUE) {
   
   ## Initialisation ----
   # ------------------------- -
   time_start <- Sys.time()
   set.seed(params$rng_seed)
+  
+  # number of previously simulated days
+  nprev_days <- nrow(prev_log_health_matrix)
+  message(paste0("Number of previously simulated days is ", nprev_days))
   
   # consider (potentially) new transmission parameters
   transmission_probs <- compute_transmission_probs(params)
@@ -375,10 +382,31 @@ rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention, ve
   # define health states
   states <- data.frame(S = "S", I = "I", R = "R",  V = "V", D = "D")
   
-  # vaccination
-  id_vaccinated <- sample(params$pop_size,
-                          params$pop_size * params$vaccine_coverage)
-  pop_data$health[id_vaccinated] <- states$V
+  # additional seed infections
+  is_still_susceptible <- which(pop_data$health == states$S)
+  if (length(is_still_susceptible) > params$num_infected_seeds){
+    seed_ids <- sample(is_still_susceptible,
+                       params$num_infected_seeds)
+    pop_data$health[seed_ids] <- states$I
+    pop_data$time_of_infection[seed_ids] <- nprev_days 
+  } else {
+    message("No additional seeding performed")
+  }
+
+  # vaccination among those still alive and not yet vaccinated before
+  # coverage expressed in terms of total population
+  is_eligible <- which(pop_data$health != states$V & pop_data$health != states$D)
+  if (length(is_eligible) > round(length(is_eligible) * params$vaccine_coverage, 0)){
+    id_vaccinated <- sample(is_eligible,
+                            round(length(is_eligible) * params$vaccine_coverage, 0))
+    pop_data$health[id_vaccinated] <- states$V
+    pop_data$time_of_vaccination[id_vaccinated] <- nprev_days
+  } else {
+    message("All available individuals vaccinated")
+    id_vaccinated <- is_eligible
+    pop_data$health[id_vaccinated] <- states$V
+    pop_data$time_of_vaccination[id_vaccinated] <- nprev_days
+  }
   
   # recovery and mortality probabilities
   prob_recovery <- 1 - exp(-1 / params$num_days_infected)
@@ -391,9 +419,6 @@ rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention, ve
   if (is.null(params$general_mortality_rate)){
     prob_mortality_general <- rep(0, length(prob_mortality_disease))
   }
-  
-  # number of previously simulated days
-  nprev_days <- nrow(prev_log_health_matrix)
   
   # log health matrix (health status for new days)
   log_health_matrix <- matrix(
@@ -515,18 +540,18 @@ rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention, ve
   if (verbose) {
     
     baseline <- if (params$bool_add_baseline) {
-      run_ibm_default(verbose = FALSE)
+      run_ibm_default(default_params, verbose = FALSE)
     } else {
       NA
     }
     
-    new_params <- params
-    new_params$num_days <- nprev_days + params$num_days 
+    plot_params <- params
+    plot_params$num_days <- nprev_days + params$num_days 
       
     par(mfrow = params$plot_mfrow)
     plot_health_states(log_health, params, out_baseline = baseline)
-    plot_secondary_cases(pop_data, params)
-    plot_generation_interval(pop_data, params)
+    plot_secondary_cases(pop_data, plot_params)
+    plot_generation_interval(pop_data, plot_params)
     plot_transmission_matrix(pop_data)
     par(mfrow = c(1, 1))
     

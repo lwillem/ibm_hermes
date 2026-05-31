@@ -81,6 +81,7 @@ create_population_matrix <- function(params) {
     symptom_onset = NA,
     time_of_symptom_onset = NA,
     time_of_hospitalization = NA,
+    time_of_vaccination = NA,
     generation_interval = 0,
     secondary_cases = 0,
     stringsAsFactors = FALSE

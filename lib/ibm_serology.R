@@ -56,8 +56,10 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
   ab_titer <- vector(length = sero_params$n)
   toi <- vector(length = sero_params$n)
   tso <- vector(length = sero_params$n)
+  tov <- vector(length = sero_params$n)
   tsi <- vector(length = sero_params$n)
   tsso <- vector(length = sero_params$n)
+  tsv <- vector(length = sero_params$n)
   
   age_group_id <- findInterval(age_at_sampling, seq(0, 100, 10))
   age_group_vec <- c("[0, 10)", "[10, 20)", "[20, 30)", "[30, 40)",
@@ -66,21 +68,38 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
     
   for (i in 1:length(sample_ids)){
     age_group[i] <- age_group_vec[age_group_id[i]]
-    toi[i] = ss_pop_data[sample_ids[i], ]$time_of_infection
-    tso[i] = ss_pop_data[sample_ids[i], ]$time_of_symptom_onset
-    tsi[i] = ifelse(is.na(toi[i]), -10, max(age_at_sampling[i] - toi[i], 0))
-    tsso[i] = ifelse(is.na(tso[i]), -10, max(age_at_sampling[i] - tso[i], 0))
-    status[i] = as.numeric(tsi[i] >= 0)
-    ab_titer[i] = status[i]*max(sero_params$LLOD, 
-                                rnorm(1, mean = sero_params$peak*exp(-sero_params$decay*tsi[i]), 
+    toi[i] <- ss_pop_data[sample_ids[i], ]$time_of_infection
+    tso[i] <- ss_pop_data[sample_ids[i], ]$time_of_symptom_onset
+    tov[i] <- ss_pop_data[sample_ids[i], ]$time_of_vaccination
+
+    tsi[i] <- ifelse(is.na(toi[i]), -10, sero_params$sampling_time - toi[i])
+    tsso[i] <- ifelse(is.na(tso[i]), -10, sero_params$sampling_time - tso[i])
+    tsv[i] <- ifelse(is.na(tov[i]), -10, sero_params$sampling_time - tov[i])
+    
+    # serostatus depending on whether someone is infected or vaccinated  
+    status[i] = as.numeric(tsi[i] >= 0 | tsv[i] >= 0) 
+    
+    # antibody titer data in the presence of vaccination
+    if (ss_pop_data[sample_ids[i], "health"] != "V"){
+      ab_titer[i] = status[i]*max(sero_params$LLOD, 
+                                  rnorm(1, mean = sero_params$peak*exp(-sero_params$decay*tsi[i]), 
+                                        sd = sero_params$sigma)) + 
+                    (1 - status[i])*max(sero_params$LLOD, 
+                                        rnorm(1, mean = sero_params$LLOD, 
                                               sd = sero_params$sigma))
+    } else {
+      ab_titer[i] = status[i]*max(sero_params$LLOD, 
+                                  rnorm(1, mean = sero_params$peak*exp(-sero_params$decay*tsv[i]), 
+                                        sd = sero_params$sigma))
+    }
   }
   
   ## Output ----
   # -------------------------- -
-  sero_data <- data.frame(ind_id = ind_ids, age = age_at_sampling, age_group = age_group,
-                          time_of_infection = toi, 
-                          time_since_infection = ifelse(tsi < 0, NA, tsi/365),
+  sero_data <- data.frame(ind_id = ind_ids, 
+                          age = age_at_sampling, age_group = age_group,
+                          #time_of_infection = toi, 
+                          #time_since_infection = ifelse(tsi < 0, NA, tsi/365),
                           time_since_symptom_onset = ifelse(tsso < 0, NA, tsso/365),
                           sero_status = status, log_igg = ab_titer)
 

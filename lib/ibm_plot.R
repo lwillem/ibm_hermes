@@ -22,9 +22,13 @@ plot_health_states <- function(log_health, params, out_baseline = NA) {
   lines(log_health$R, col = 3, lwd = 2)
   lines(log_health$V, col = 4, lwd = 2)
   lines(log_health$D, col = 5, lwd = 2)
+  lines(log_health$S + log_health$I + log_health$R + log_health$V, 
+        col = "lightgray", lwd = 2)
+  lines(log_health$I + log_health$R + log_health$V, 
+        col = "pink", lwd = 2)
 
-  legend("top", legend = c("S", "I", "R", "V", "D"),
-         col = 1:5, lwd = 2, ncol = 5, cex = 0.7, bg = "white",
+  legend("top", legend = c("S", "I", "R", "V", "D", "A", "S+"),
+         col = c(1:5, "lightgray", "pink"), lwd = 2, ncol = 7, cex = 0.7, bg = "white",
          inset = c(0, -0.3), xpd = NA)
 
   if (any(!is.na(out_baseline))) {

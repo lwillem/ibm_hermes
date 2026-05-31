@@ -20,13 +20,13 @@ get_default_sero_parameters <- function() {
 
   params <- list(
     # serological survey sample size
-    n              = 500,
+    n              = 1000,
     sampling_time  = 10,
     
     # antibody titers (in IU/mL)
     peak    = 100,
-    decay   = 0.02,
-    sigma   = 0.5,
+    decay   = 0.01,
+    sigma   = 0.4,
     LLOD    = log(5),
       
     # random number generation
