@@ -1,6 +1,7 @@
 ---
 title: "User Manual: HERMES"
-date: "2026-01-26"
+subtitle: "Extended version"
+date: "May 31, 2026"
 output:
   pdf_document:
     toc: true
@@ -16,14 +17,13 @@ output:
 
 This manual is intended for scientific users who wish to understand and apply HERMES, an individual-based, health- and economic risk-stratified microsimulation framework. The acronym HERMES stands for Health, Epidemic and Economic R-based Microsimulation Engine for individual-based Simulations. In its current configuration, the framework implements an individual-based infectious disease transmission model in a structured population comprising households, schools, workplaces, and the general community.
 
-The model source code can be obtained by cloning the [GitHub repository](https://github.com/lwillem/ibm_hermes.git), or by downloading the individual R scripts as described in the Install section at the end of this manual.
+The model source code can be obtained by cloning the [GitHub repository](https://github.com/lwillem/ibm_hermes.git), or by downloading the individual R scripts as described in the Install section at the end of this manual. The extended version intended for use during the Lorentz Center Workshop is provided as a separate branch of the same GitHub repository.
 
 The software is distributed in the hope that it will be useful, but without any warranty. For use in educational, research, or other scientific contexts, users are encouraged to contact the authors listed at the end of this document.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 knitr::opts_chunk$set(root.dir = "..")
-
 ```
 
 
@@ -127,6 +127,8 @@ Results are saved as RDS files and include:
   simulation, with one row per individual and individual attributes stored in
   columns.
   
+# Model extensions
+Several model extensions are included to allow for a sequential running of HERMES under different user-specified interventions. Next to vaccination using a leaky vaccine implementation, the user can tune specific transmission and social contact parameters in order to alter disease transmission in the population at discrete time points. Moreover, the source code has been adapted to generate incidence data with reporting delays and underreporting, contact tracing data and serological survey data. 
 
 # Reproducible example run
 
@@ -175,7 +177,11 @@ run_ibm_regression_test()
 University of Antwerp, Belgium 
 (lander.willem@uantwerpen.be)
 
-**et al.**  
+**Steven Abrams**  
+University of Antwerp, Belgium 
+(steven.abrams@uantwerpen.be)
+Hasselt University, Belgium 
+(steven.abrams@uhasselt.be)
 
 \newpage
 # Appendix: Install
