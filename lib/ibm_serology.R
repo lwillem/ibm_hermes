@@ -83,26 +83,36 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
     if (ss_pop_data[sample_ids[i], "health"] != "V"){
       ab_titer[i] = status[i]*max(sero_params$LLOD, 
                                   rnorm(1, mean = sero_params$peak*exp(-sero_params$decay*tsi[i]), 
-                                        sd = sero_params$sigma)) + 
+                                        sd = sero_params$sigma1)) + 
                     (1 - status[i])*max(sero_params$LLOD, 
-                                        rnorm(1, mean = sero_params$LLOD, 
-                                              sd = sero_params$sigma))
+                                        rnorm(1, mean = sero_params$LLOD + sero_params$seroneg_offset, 
+                                              sd = sero_params$sigma2))
     } else {
       ab_titer[i] = status[i]*max(sero_params$LLOD, 
                                   rnorm(1, mean = sero_params$peak*exp(-sero_params$decay*tsv[i]), 
-                                        sd = sero_params$sigma))
+                                        sd = sero_params$sigma2))
     }
   }
   
   ## Output ----
   # -------------------------- -
   sero_data <- data.frame(ind_id = ind_ids, 
-                          age = age_at_sampling, age_group = age_group,
+                          #age = age_at_sampling, age_group = age_group,
                           #time_of_infection = toi, 
                           #time_since_infection = ifelse(tsi < 0, NA, tsi/365),
-                          time_since_symptom_onset = ifelse(tsso < 0, NA, tsso/365),
-                          sero_status = status, log_igg = ab_titer)
+                          #time_since_symptom_onset = ifelse(tsso < 0, NA, tsso/365),
+                          #sero_status = status, 
+                          log_igg = ab_titer,
+                          time_of_sampling = sero_params$sampling_time)
 
+  if (verbose) {
+    par(mfrow = sero_params$plot_mfrow)
+    plot_grid = seq(-2, max(ab_titer), 0.01)
+    hist(ab_titer, freq = F, main = "Antibody titer concentrations",
+         xlab = "Log-transformed antibody titer concentration")
+    par(mfrow = c(1, 1))
+  }
+  
   saveRDS(sero_data,
           file = file.path(sero_params$output_dir, "sero_data.rds"))
   

@@ -23,10 +23,12 @@ get_default_sero_parameters <- function() {
     n              = 1000,
     sampling_time  = 10,
     
-    # antibody titers (in IU/mL)
-    peak    = 100,
-    decay   = 0.01,
-    sigma   = 0.4,
+    # log-antibody titers (in IU/mL)
+    peak    = 5,
+    decay   = 0.00,
+    sigma1   = 0.5,
+    sigma2   = 0.75,
+    seroneg_offset = 0.25,
     LLOD    = log(5),
       
     # random number generation
