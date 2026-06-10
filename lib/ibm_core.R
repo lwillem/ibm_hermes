@@ -233,7 +233,7 @@ run_ibm <- function(params, default_params = NULL, verbose = TRUE) {
     }
 
     # Hospitalization
-    is_symptoms <- (pop_data$health != states$R) & (pop_data$time_of_symptom_onset < day)
+    is_symptoms <- (pop_data$health != states$R) & (pop_data$health != states$D) & (pop_data$time_of_symptom_onset < day)
     is_hospitalized <- !is.na(pop_data$time_of_hospitalization)
       
     hospitalized <- is_symptoms & (!is_hospitalized) &
@@ -246,7 +246,7 @@ run_ibm <- function(params, default_params = NULL, verbose = TRUE) {
     pop_data$health[recovered] <- states$R
 
     # In case general mortality rates are provided, no distinction between
-    # natural and disease-related mortality are made; in case of absence
+    # natural and disease-related mortality is made; in case of absence
     # of general mortality rates (but population death times) the death times
     # solely represent disease-related mortality. 
     prob_mortality <- prob_mortality_general[pop_data$age] +
@@ -264,6 +264,13 @@ run_ibm <- function(params, default_params = NULL, verbose = TRUE) {
     
     log_health_matrix[, day] <- pop_data$health
   }
+  
+  ## Correct times of symptom onset not to lie beyond death times ---
+  #------------------------------------------------------------------ -
+  pop_data$time_of_symptom_onset[!is.na(pop_data$time_of_symptom_onset) & 
+                                   pop_data$time_of_symptom_onset > pop_data$time_of_death] <- NA
+  pop_data$time_of_symptom_onset[!is.na(pop_data$time_of_symptom_onset) & 
+                                   pop_data$time_of_symptom_onset > pop_data$time_of_natural_death] <- NA
 
   ## Output ----
   # -------------------------- -
@@ -380,7 +387,7 @@ rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention,
   transmission_probs <- compute_transmission_probs(params)
   
   # define health states
-  states <- data.frame(S = "S", I = "I", R = "R",  V = "V", D = "D")
+  states <- data.frame(S = "S", I = "I", R = "R", V = "V", D = "D")
   
   # additional seed infections
   is_still_susceptible <- which(pop_data$health == states$S)
@@ -395,6 +402,7 @@ rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention,
 
   # vaccination among those still alive and not yet vaccinated before
   # coverage expressed in terms of total population
+  # people move to V only in case they are susceptible
   is_eligible <- which(pop_data$health != states$V & pop_data$health != states$D)
   if (length(is_eligible) > round(length(is_eligible) * params$vaccine_coverage, 0)){
     id_vaccinated <- sample(is_eligible,
@@ -434,13 +442,13 @@ rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention,
   )
   
   for (day in (nprev_days + seq_len(params$num_days))) {
-    
+ 
     pb$tick()
     
     is_infected <- pop_data$health == states$I
     is_death <- pop_data$health == states$D
     infected_ids <- which(is_infected)
-    
+
     for (i in infected_ids) {
       
       prob_infection <- is_susceptible(pop_data$health, states) *
@@ -467,8 +475,8 @@ rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention,
       
       prob_infection[pop_data$health == states$V] <-
         prob_infection[pop_data$health == states$V] *
-        (1 - params$vaccine_effectiveness)
-      
+        (1 - params$vaccine_effectiveness) * is.na(pop_data$time_of_infection[pop_data$health == states$V])
+
       new_infections <- rbinom(
         params$pop_size, size = 1, prob = prob_infection
       ) == 1
@@ -479,7 +487,7 @@ rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention,
         params$pop_size, scale = params$scale_symptom_onset, 
         shape = params$shape_symptom_onset
       )
-      
+  
       pop_data$health[new_infections] <- states$I
       pop_data$infector[new_infections] <- i
       pop_data$infector_id[new_infections] <- rownames(pop_data)[i]
@@ -495,7 +503,7 @@ rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention,
     }
     
     # Hospitalization
-    is_symptoms <- (pop_data$health != states$R) & (pop_data$time_of_symptom_onset < day)
+    is_symptoms <- (pop_data$health != states$R) & (pop_data$health != states$D) & (pop_data$time_of_symptom_onset < day)
     is_hospitalized <- !is.na(pop_data$time_of_hospitalization)
     
     hospitalized <- is_symptoms & (!is_hospitalized) &
@@ -526,6 +534,13 @@ rerun_ibm <- function(pop_data, prev_log_health_matrix, params, intervention,
     
     log_health_matrix[, day - nprev_days] <- pop_data$health
   }
+  
+  ## Correct times of symptom onset not to lie beyond death times ---
+  #------------------------------------------------------------------ -
+  pop_data$time_of_symptom_onset[!is.na(pop_data$time_of_symptom_onset) & 
+                                   pop_data$time_of_symptom_onset > pop_data$time_of_death] <- NA
+  pop_data$time_of_symptom_onset[!is.na(pop_data$time_of_symptom_onset) & 
+                                   pop_data$time_of_symptom_onset > pop_data$time_of_natural_death] <- NA
   
   ## Output ----
   # -------------------------- -
