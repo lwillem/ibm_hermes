@@ -18,11 +18,12 @@
 #'
 #' @param pop_data Population data with infection histories and times of death.
 #' @param delay_params List of parameters for the delay distribution.
+#' @param current_date The date at which the incidence is reported
 #' @param verbose Logical; if TRUE, plots and summaries are produced.
 #'
 #' @return A list with elements \code{log_sero}.
 #' @export
-obtain_incidence_data <- function(pop_data, delay_params, verbose = TRUE) {
+obtain_incidence_data <- function(pop_data, delay_params, current_date, verbose = TRUE) {
   
   ## Reproducibility ----
   # ------------------------- -
@@ -67,18 +68,30 @@ obtain_incidence_data <- function(pop_data, delay_params, verbose = TRUE) {
          xlab = "Time of infection", ylab = "Time of reporting")
   }
   
+  ## Calculate time stamp
+  #-------------------------- -
+  time_stamp <- current_date
+  
   ## Output ----
   # -------------------------- -
   incidence_data <- subset(incidence_data, !is.na(incidence_data$time_of_reporting))
+  incidence_data <- subset(incidence_data, incidence_data$time_of_symptom_onset < current_date)
   incidence_data <- subset(incidence_data, 
                            select = -c(health, infector, infector_id, infector_age,
                                        time_of_infection, time_of_natural_death,
                                        age_natural_death, symptom_onset, 
                                        generation_interval, secondary_cases))
-
+  ind_id <- rownames(incidence_data)
+  
+  incidence_data <- data.frame(ind_id = ind_id,
+                               subset(incidence_data,
+                                      select = c("time_of_symptom_onset",
+                                                 "time_of_reporting",
+                                                 "time_of_hospitalization")),
+                               time = time_stamp)
+  rownames(incidence_data)
   saveRDS(incidence_data,
           file = file.path(delay_params$output_dir, "incidence_data.rds"))
   
   return(list(incidence_data = incidence_data, params = delay_params))
 }
-

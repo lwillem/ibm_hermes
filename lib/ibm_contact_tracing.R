@@ -70,7 +70,8 @@ sample_contact_tracing_data <- function(pop_data, contact_tracing_params, verbos
   
   ## Output ----
   # -------------------------- -
-  contact_tracing_data <- data.frame(infector_id = rownames(pop_data)[infectee_dat$infector], 
+  contact_tracing_data <- data.frame(time = contact_tracing_params$end_contact_tracing,
+                                     infector_id = rownames(pop_data)[infectee_dat$infector], 
                                      infectee_id = rownames(infectee_dat), 
                                      infector_symptom_onset = infector_dat$time_of_symptom_onset, 
                                      infectee_symptom_onset = infectee_dat$time_of_symptom_onset,

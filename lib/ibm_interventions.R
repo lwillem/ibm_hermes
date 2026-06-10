@@ -42,12 +42,12 @@ params$num_days <- 15
 params$num_infected_seeds <- 10
 params$bool_add_baseline  <- TRUE
 params$general_mortality_rate <- NULL
-params$pop_size <- 1e5
+params$pop_size <- 1e4
 
 params$vaccine_coverage <- 0
 params$vaccine_effectiveness <- 0
 
-params$transmission_prob <- 0.04
+params$transmission_prob <- 0.05
 
 params$output_dir = "output/ibm_final"
 
@@ -256,6 +256,41 @@ dim(health_time_data)
 head(health_time_data$log_health)
 
 # ------------------------------------------------------------------------ -
+# PARAMETER CONFIGURATION 5 (VACCINATION IMPOSED OVER 10 DAY PERIOD) ----
+# ------------------------------------------------------------------------ -
+
+new_params5 <- params
+
+new_params5$num_days <- 20
+new_params5$num_infected_seeds <- 0
+new_params5$vaccine_coverage <- 0.20
+new_params5$vaccine_effectiveness <- 0.8
+
+# ------------------------------------------------------------------------ -
+# RUN IBM MODEL AGAIN ----
+# ------------------------------------------------------------------------ -
+
+new_ibm_results <- rerun_ibm(pop_data = pop_data, 
+                             prev_log_health_matrix = health_time_data$log_health, 
+                             params = new_params5, 
+                             intervention = 6)
+
+# output is stored in: 
+new_ibm_results$params$output_dir
+
+# explore population output
+pop_data_file <- file.path(new_ibm_results$params$output_dir,'pop_data_intervention6.rds')
+pop_data <- readRDS(pop_data_file)
+dim(pop_data)
+head(pop_data)
+
+# explore health states output
+health_time_file <- file.path(new_ibm_results$params$output_dir,'health_time_intervention6.rds')
+health_time_data <- readRDS(health_time_file)
+dim(health_time_data)
+head(health_time_data$log_health)
+
+# ------------------------------------------------------------------------ -
 # CREATE FINAL POPULATION DATA ----
 # ------------------------------------------------------------------------ -
 
@@ -278,13 +313,44 @@ head(final_pop_data)
 health_time_file <- file.path(health_time_data$params$output_dir, "final_health_time.rds")
 final_health_time_data <- readRDS(health_time_file)
 
+# some sanity checks
+#TO BE INCLUDED
+
 # ------------------------------------------------------------------------ -
 # POSTPROCESSING OF POPULATION DATA ----
 # ------------------------------------------------------------------------ -
 
+current_date <- nrow(final_health_time_data$log_health)
+
+# add time stamp to the population data
+final_pop_data$time <- current_date
+
+# explore population output
+saveRDS(final_pop_data,
+        file = file.path(health_time_data$params$output_dir, "final_pop_data.rds"))
+
+pop_data_file <- file.path(health_time_data$params$output_dir, "final_pop_data.rds")
+final_pop_data <- readRDS(pop_data_file)
+head(final_pop_data)
+
 # ------------------------------------------------------------------------ -
 # DATASET0: DEMOGRAPHIC DATA ----
 # ------------------------------------------------------------------------ -
+
+# Demographic data generation with delays
+demographic_data <- obtain_demographic_data(final_pop_data)
+
+saveRDS(demographic_data,
+        file = file.path(params$output_dir, "demographic_data.rds"))
+
+# explore demographic data output
+demographic_data_file <- file.path(params$output_dir,'demographic_data.rds')
+final_demographic_data <- readRDS(demographic_data_file)
+head(final_demographic_data)
+
+# store final demographic data output
+saveRDS(final_demographic_data,
+        file = file.path(params$output_dir, "final_demographic_data.rds"))
 
 # ------------------------------------------------------------------------ -
 # DATASET1: INCIDENCE DATA ----
@@ -295,7 +361,7 @@ delay_params <- get_default_delay_parameters()
 delay_params$output_dir <- params$output_dir
 
 # Incidence data generation with delays
-incidence_results <- obtain_incidence_data(final_pop_data, delay_params)
+incidence_results <- obtain_incidence_data(final_pop_data, delay_params, current_date)
 
 # explore contact tracing data output
 incidence_data_file <- file.path(incidence_results$params$output_dir,'incidence_data.rds')
@@ -377,6 +443,10 @@ contact_tracing_data_file <- file.path(contact_tracing_results$params$output_dir
 final_contact_tracing_data <- readRDS(contact_tracing_data_file)
 head(final_contact_tracing_data)
 
+# select the final contact tracing based on whether infectors are identified in incidence data
+in_incidence <- final_incidence_data$ind_id
+final_contact_tracing_data <- final_contact_tracing_data[final_contact_tracing_data$infector_id %in% in_incidence, ]
+
 # store final contact tracing data output
 saveRDS(final_contact_tracing_data,
         file = file.path(contact_tracing_params$output_dir, "final_contact_tracing_data.rds"))
@@ -396,15 +466,15 @@ sero_params3 <- sero_params1
 sero_params3$sampling_time <- 30
 
 # Serological data generation
-sero_results1 <- sample_serological_data(final_pop_data, sero_params1, verbose)
+sero_results1 <- sample_serological_data(final_pop_data, sero_params1, verbose = TRUE)
 final_sero_data1 <- sero_results1$sero_data 
 final_sero_data1$time_of_sampling <- sero_params1$sampling_time
 
-sero_results2 <- sample_serological_data(final_pop_data, sero_params2, verbose)
+sero_results2 <- sample_serological_data(final_pop_data, sero_params2, verbose = TRUE)
 final_sero_data2 <- sero_results2$sero_data 
 final_sero_data2$time_of_sampling <- sero_params2$sampling_time
 
-sero_results3 <- sample_serological_data(final_pop_data, sero_params3, verbose)
+sero_results3 <- sample_serological_data(final_pop_data, sero_params3, verbose = TRUE)
 final_sero_data3 <- sero_results3$sero_data 
 final_sero_data3$time_of_sampling <- sero_params3$sampling_time
 
@@ -476,6 +546,37 @@ ggsave(
 # DATASET4: MORTALITY DATA ----
 # ------------------------------------------------------------------------ -
 
+# Mortality data generation with delays
+mortality_data <- obtain_mortality_data(final_pop_data, current_date = 50)
+
+saveRDS(mortality_data,
+        file = file.path(params$output_dir, "mortality_data.rds"))
+
+# explore mortality data output
+mortality_data_file <- file.path(params$output_dir,'mortality_data.rds')
+final_mortality_data <- readRDS(mortality_data_file)
+head(final_mortality_data)
+
+# store final mortality data output
+saveRDS(final_mortality_data,
+        file = file.path(params$output_dir, "final_mortality_data.rds"))
+
 # ------------------------------------------------------------------------ -
-# DATASET5: HOSPITALIZATION DATA ----
+# DATASET5: VACCINATION DATA ----
 # ------------------------------------------------------------------------ -
+
+# Mortality data generation with delays
+vaccination_data <- obtain_vaccination_data(final_pop_data, current_date = 85)
+
+saveRDS(vaccination_data,
+        file = file.path(params$output_dir, "vaccination_data.rds"))
+
+# explore mortality data output
+vaccination_data_file <- file.path(params$output_dir,'vaccination_data.rds')
+final_vaccination_data <- readRDS(vaccination_data_file)
+head(final_vaccination_data)
+
+# store final mortality data output
+saveRDS(final_vaccination_data,
+        file = file.path(params$output_dir, "final_vaccination_data.rds"))
+

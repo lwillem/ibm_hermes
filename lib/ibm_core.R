@@ -34,6 +34,7 @@ source('lib/ibm_contact_tracing.R')
 source('lib/ibm_contact_tracing_parameters.R')
 source('lib/ibm_reporting_delays.R')
 source('lib/ibm_delay_parameters.R')
+source('lib/ibm_demographic.R')
 
 # ------------------------------------------------------------------------ -
 # INTERNAL HELPERS ----
