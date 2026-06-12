@@ -38,16 +38,16 @@ print_model_parameters(params)
 
 # New settings
 params$output_dir <- "output/ibm_modified"
-params$num_days <- 15
+params$num_days <- 20
 params$num_infected_seeds <- 10
 params$bool_add_baseline  <- TRUE
 params$general_mortality_rate <- NULL
-params$pop_size <- 1e4
+params$pop_size <- 5e4
 
 params$vaccine_coverage <- 0
 params$vaccine_effectiveness <- 0
 
-params$transmission_prob <- 0.05
+params$transmission_prob <- 0.06
 
 params$output_dir = "output/ibm_final"
 
@@ -73,7 +73,7 @@ dim(health_time_data)
 head(health_time_data$log_health)
 
 # ------------------------------------------------------------------------ -
-# PHASE 2: FULL LOCKDOWN IMPOSED OVER 7 DAY PERIOD (DAY 15) ----
+# PHASE 2: FULL LOCKDOWN IMPOSED OVER 7 DAY PERIOD (DAY 20) ----
 # ------------------------------------------------------------------------ -
 
 # ------------------------------------------------------------------------ -
@@ -151,7 +151,7 @@ dim(health_time_data)
 head(health_time_data$log_health)
 
 # ------------------------------------------------------------------------ -
-# PHASE 3: EXIT STRATEGY IMPOSED OVER 7 DAY PERIOD (DAY 30) ----
+# PHASE 3: EXIT STRATEGY IMPOSED OVER 7 DAY PERIOD (DAY 35) ----
 # ------------------------------------------------------------------------ -
 
 params$num_days <- 10
@@ -181,7 +181,7 @@ dim(health_time_data)
 head(health_time_data$log_health)
 
 # ------------------------------------------------------------------------ -
-# PHASE 4: FULL VACCINATION IMPOSED OVER 10 DAY PERIOD (DAY 40) ----
+# PHASE 4: FULL VACCINATION IMPOSED OVER 10 DAY PERIOD (DAY 45) ----
 # ------------------------------------------------------------------------ -
 
 # ------------------------------------------------------------------------ -
@@ -342,7 +342,6 @@ final_pop_data$time_of_hospitalization <- ifelse(is.na(death_times),
                                                   ifelse(is.na(final_pop_data$time_of_hospitalization), 
                                                          final_pop_data$time_of_hospitalization, 
                                                          ifelse(death_times < final_pop_data$time_of_hospitalization, death_times, final_pop_data$time_of_hospitalization)))
-head(final_pop_data)
 
 # explore population output
 saveRDS(final_pop_data,
@@ -498,8 +497,8 @@ sero_params2$sampling_time <- 20
 sero_params3 <- sero_params1
 sero_params3$sampling_time <- 30
 
-#sero_params4 <- sero_params1
-#sero_params4$sampling_time <- 40
+sero_params4 <- sero_params1
+sero_params4$sampling_time <- 40
 
 # Serological data generation
 sero_results1 <- sample_serological_data(final_pop_data, sero_params1, verbose = TRUE)
@@ -514,9 +513,9 @@ sero_results3 <- sample_serological_data(final_pop_data, sero_params3, verbose =
 final_sero_data3 <- sero_results3$sero_data 
 final_sero_data3$time_of_sampling <- sero_params3$sampling_time
 
-#sero_results4 <- sample_serological_data(final_pop_data, sero_params4, verbose = TRUE)
-#final_sero_data4 <- sero_results4$sero_data 
-#final_sero_data4$time_of_sampling <- sero_params4$sampling_time
+sero_results4 <- sample_serological_data(final_pop_data, sero_params4, verbose = TRUE)
+final_sero_data4 <- sero_results4$sero_data 
+final_sero_data4$time_of_sampling <- sero_params4$sampling_time
 
 # store final contact tracing data output
 saveRDS(final_sero_data1,
@@ -525,72 +524,72 @@ saveRDS(final_sero_data2,
         file = file.path(sero_params2$output_dir, "final_sero_data_time20.rds"))
 saveRDS(final_sero_data3,
         file = file.path(sero_params3$output_dir, "final_sero_data_time30.rds"))
-#saveRDS(final_sero_data4,
-#        file = file.path(sero_params4$output_dir, "final_sero_data_time40.rds"))
+saveRDS(final_sero_data4,
+        file = file.path(sero_params4$output_dir, "final_sero_data_time40.rds"))
 
 # visualization of the seroprevalence by age group 
 final_sero_data = rbind(final_sero_data1, final_sero_data2, 
-                        final_sero_data3)
+                        final_sero_data3, final_sero_data4)
 saveRDS(final_sero_data,
         file = file.path(sero_params1$output_dir, "final_sero_data.rds"))
 head(final_sero_data)
 
-seroprev_by_age_group <- tapply(final_sero_data$sero_status, 
-                                list(final_sero_data$age_group, final_sero_data$time_of_sampling), mean)
-npos_by_age_group <- tapply(final_sero_data$sero_status, 
-                            list(final_sero_data$age_group, final_sero_data$time_of_sampling), sum)
-n_by_age_group <- tapply(final_sero_data$sero_status, 
-                         list(final_sero_data$age_group, final_sero_data$time_of_sampling), length)
-
-z <- 1.96
-denominator <- 1 + ((z**2)/n_by_age_group)
-center_adj <- seroprev_by_age_group + (z**2/(2*n_by_age_group))
-std_adj = sqrt((seroprev_by_age_group*(1 - seroprev_by_age_group)/n_by_age_group) + 
-                 (z**2/(4*n_by_age_group**2)))
-
-seroprev_by_age_group_ll = (center_adj - z*std_adj)/denominator
-seroprev_by_age_group_ul = (center_adj + z*std_adj)/denominator
-
-sd_seroprev_by_age_group = sqrt((seroprev_by_age_group*(1 - seroprev_by_age_group))/n_by_age_group)
-seroprev_by_age_group_ll_asymp = seroprev_by_age_group - z*sd_seroprev_by_age_group
-seroprev_by_age_group_ul_asymp = seroprev_by_age_group + z*sd_seroprev_by_age_group
-
-sero_plot_df2 <- data.frame(age_group = rep(rownames(seroprev_by_age_group), 3),
-                            seroprev = as.vector(seroprev_by_age_group),
-                            seroprev_ll = as.vector(seroprev_by_age_group_ll),
-                            seroprev_ul = as.vector(seroprev_by_age_group_ul),
-                            seroprev_ll_asymp = as.vector(seroprev_by_age_group_ll_asymp),
-                            seroprev_ul_asymp = as.vector(seroprev_by_age_group_ul_asymp),
-                            time = rep(colnames(seroprev_by_age_group), 
-                                       each = length(unique(final_sero_data$age_group))))
-
-p1 <- ggplot(sero_plot_df2, 
-             aes(x = factor(age_group), 
-                 y = seroprev,
-                 color = time)) +
-  geom_point(position=position_dodge(.9)) + 
-  labs(
-    x = "Age group",
-    y = "Proportion of seropositive individuals",
-    title = "Seroprevalence by age group over time"
-  ) +
-  geom_errorbar(aes(ymin=seroprev_ll, ymax=seroprev_ul), width=.2,
-                position=position_dodge(.9)) 
-
-# Save plot
-ggsave(
-  filename = file.path(fig_dir, "final_seroprevalence_age_group_time.png"),
-  plot = p1,
-  width = 6,
-  height = 4
-)
+# seroprev_by_age_group <- tapply(final_sero_data$sero_status, 
+#                                 list(final_sero_data$age_group, final_sero_data$time_of_sampling), mean)
+# npos_by_age_group <- tapply(final_sero_data$sero_status, 
+#                             list(final_sero_data$age_group, final_sero_data$time_of_sampling), sum)
+# n_by_age_group <- tapply(final_sero_data$sero_status, 
+#                          list(final_sero_data$age_group, final_sero_data$time_of_sampling), length)
+# 
+# z <- 1.96
+# denominator <- 1 + ((z**2)/n_by_age_group)
+# center_adj <- seroprev_by_age_group + (z**2/(2*n_by_age_group))
+# std_adj = sqrt((seroprev_by_age_group*(1 - seroprev_by_age_group)/n_by_age_group) + 
+#                  (z**2/(4*n_by_age_group**2)))
+# 
+# seroprev_by_age_group_ll = (center_adj - z*std_adj)/denominator
+# seroprev_by_age_group_ul = (center_adj + z*std_adj)/denominator
+# 
+# sd_seroprev_by_age_group = sqrt((seroprev_by_age_group*(1 - seroprev_by_age_group))/n_by_age_group)
+# seroprev_by_age_group_ll_asymp = seroprev_by_age_group - z*sd_seroprev_by_age_group
+# seroprev_by_age_group_ul_asymp = seroprev_by_age_group + z*sd_seroprev_by_age_group
+# 
+# sero_plot_df2 <- data.frame(age_group = rep(rownames(seroprev_by_age_group), 3),
+#                             seroprev = as.vector(seroprev_by_age_group),
+#                             seroprev_ll = as.vector(seroprev_by_age_group_ll),
+#                             seroprev_ul = as.vector(seroprev_by_age_group_ul),
+#                             seroprev_ll_asymp = as.vector(seroprev_by_age_group_ll_asymp),
+#                             seroprev_ul_asymp = as.vector(seroprev_by_age_group_ul_asymp),
+#                             time = rep(colnames(seroprev_by_age_group), 
+#                                        each = length(unique(final_sero_data$age_group))))
+# 
+# p1 <- ggplot(sero_plot_df2, 
+#              aes(x = factor(age_group), 
+#                  y = seroprev,
+#                  color = time)) +
+#   geom_point(position=position_dodge(.9)) + 
+#   labs(
+#     x = "Age group",
+#     y = "Proportion of seropositive individuals",
+#     title = "Seroprevalence by age group over time"
+#   ) +
+#   geom_errorbar(aes(ymin=seroprev_ll, ymax=seroprev_ul), width=.2,
+#                 position=position_dodge(.9)) 
+# 
+# # Save plot
+# ggsave(
+#   filename = file.path(fig_dir, "final_seroprevalence_age_group_time.png"),
+#   plot = p1,
+#   width = 6,
+#   height = 4
+# )
 
 # ------------------------------------------------------------------------ -
 # DATASET4: MORTALITY DATA ----
 # ------------------------------------------------------------------------ -
 
 # Mortality data generation with delays
-mortality_data <- obtain_mortality_data(final_pop_data, current_date = 50)
+mortality_data <- obtain_mortality_data(final_pop_data, current_date = 90)
 
 saveRDS(mortality_data,
         file = file.path(params$output_dir, "mortality_data.rds"))
@@ -609,7 +608,7 @@ saveRDS(final_mortality_data,
 # ------------------------------------------------------------------------ -
 
 # Mortality data generation with delays
-vaccination_data <- obtain_vaccination_data(final_pop_data, current_date = 85)
+vaccination_data <- obtain_vaccination_data(final_pop_data, current_date = 90)
 
 saveRDS(vaccination_data,
         file = file.path(params$output_dir, "vaccination_data.rds"))
