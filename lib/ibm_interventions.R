@@ -372,6 +372,20 @@ head(final_incidence_data)
 saveRDS(final_incidence_data,
         file = file.path(delay_params$output_dir, "final_incidence_data.rds"))
 
+# create two subsets of the incidence data based on full incidence data
+final_incidence_data_day40 <- subset(final_incidence_data, time_of_reporting <= 40)
+final_incidence_data_day40$time = 40
+head(final_incidence_data_day40)
+
+final_incidence_data_reduced <- subset(final_incidence_data, select = c("ind_id", "time_of_reporting", "time"))
+head(final_incidence_data_reduced)
+
+# store subsets of the incidence data
+saveRDS(final_incidence_data_day40,
+        file = file.path(delay_params$output_dir, "final_incidence_data_day40.rds"))
+saveRDS(final_incidence_data_reduced,
+        file = file.path(delay_params$output_dir, "final_incidence_data_reduced.rds"))
+
 # plot incidence data
 tab <- table(final_incidence_data$time_of_symptom_onset)
 final_incidence_plot_df <- data.frame(time = sort(unique(final_incidence_data$time_of_symptom_onset)),
@@ -443,9 +457,9 @@ contact_tracing_data_file <- file.path(contact_tracing_results$params$output_dir
 final_contact_tracing_data <- readRDS(contact_tracing_data_file)
 head(final_contact_tracing_data)
 
-# select the final contact tracing based on whether infectors are identified in incidence data
+# select the final contact tracing based on whether infectees are identified in incidence data (hence, symptomatic)
 in_incidence <- final_incidence_data$ind_id
-final_contact_tracing_data <- final_contact_tracing_data[final_contact_tracing_data$infector_id %in% in_incidence, ]
+final_contact_tracing_data <- final_contact_tracing_data[final_contact_tracing_data$ind_id %in% in_incidence, ]
 
 # store final contact tracing data output
 saveRDS(final_contact_tracing_data,
@@ -465,8 +479,8 @@ sero_params2$sampling_time <- 20
 sero_params3 <- sero_params1
 sero_params3$sampling_time <- 30
 
-sero_params4 <- sero_params1
-sero_params4$sampling_time <- 40
+#sero_params4 <- sero_params1
+#sero_params4$sampling_time <- 40
 
 # Serological data generation
 sero_results1 <- sample_serological_data(final_pop_data, sero_params1, verbose = TRUE)
@@ -481,9 +495,9 @@ sero_results3 <- sample_serological_data(final_pop_data, sero_params3, verbose =
 final_sero_data3 <- sero_results3$sero_data 
 final_sero_data3$time_of_sampling <- sero_params3$sampling_time
 
-sero_results4 <- sample_serological_data(final_pop_data, sero_params4, verbose = TRUE)
-final_sero_data4 <- sero_results4$sero_data 
-final_sero_data4$time_of_sampling <- sero_params4$sampling_time
+#sero_results4 <- sample_serological_data(final_pop_data, sero_params4, verbose = TRUE)
+#final_sero_data4 <- sero_results4$sero_data 
+#final_sero_data4$time_of_sampling <- sero_params4$sampling_time
 
 # store final contact tracing data output
 saveRDS(final_sero_data1,
@@ -492,12 +506,12 @@ saveRDS(final_sero_data2,
         file = file.path(sero_params2$output_dir, "final_sero_data_time20.rds"))
 saveRDS(final_sero_data3,
         file = file.path(sero_params3$output_dir, "final_sero_data_time30.rds"))
-saveRDS(final_sero_data4,
-        file = file.path(sero_params4$output_dir, "final_sero_data_time40.rds"))
+#saveRDS(final_sero_data4,
+#        file = file.path(sero_params4$output_dir, "final_sero_data_time40.rds"))
 
 # visualization of the seroprevalence by age group 
 final_sero_data = rbind(final_sero_data1, final_sero_data2, 
-                        final_sero_data3, final_sero_data4)
+                        final_sero_data3)
 saveRDS(final_sero_data,
         file = file.path(sero_params1$output_dir, "final_sero_data.rds"))
 head(final_sero_data)

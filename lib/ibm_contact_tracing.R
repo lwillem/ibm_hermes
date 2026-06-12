@@ -79,13 +79,38 @@ sample_contact_tracing_data <- function(pop_data, contact_tracing_params, verbos
   
   ## Output ----
   # -------------------------- -
+  #contact_tracing_data <- data.frame(time = contact_tracing_params$end_contact_tracing,
+  #                                   infector_id = rownames(pop_data)[infectee_dat$infector], 
+  #                                   infectee_id = rownames(infectee_dat), 
+  #                                   infector_symptom_onset = infector_dat$time_of_symptom_onset, 
+  #                                   infectee_symptom_onset = infectee_dat$time_of_symptom_onset,
+  #                                   infector_age = infector_dat$age, 
+  #                                   infectee_age = infectee_dat$age,
+  #                                   time_of_contact_lower = ll_time_window,
+  #                                   time_of_contact_upper = ul_time_window)
+  
+  ids_pairs = cbind(rownames(pop_data)[infectee_dat$infector],
+                    rownames(infectee_dat))
+
+  M = cbind(infector_dat$time_of_symptom_onset,
+            infectee_dat$time_of_symptom_onset)
+
+  sorted_so = t(apply(M, 1, function(x) sort(x, decreasing = T, na.last = TRUE)))
+  ordering_so = t(apply(M, 1, function(x) order(x, decreasing = T, na.last = TRUE)))
+  
+  ids_sorted <- t(sapply(seq_len(nrow(ids_pairs)), function(i) {
+    ids_pairs[i, ordering_so[i, ]]
+  }))
+  
   contact_tracing_data <- data.frame(time = contact_tracing_params$end_contact_tracing,
-                                     infector_id = rownames(pop_data)[infectee_dat$infector], 
-                                     infectee_id = rownames(infectee_dat), 
-                                     infector_symptom_onset = infector_dat$time_of_symptom_onset, 
-                                     infectee_symptom_onset = infectee_dat$time_of_symptom_onset,
-                                     infector_age = infector_dat$age, 
-                                     infectee_age = infectee_dat$age,
+                                     ind_id = ids_sorted[,1],
+                                     reported_contact = ids_sorted[,2],
+                                     #infector_id = rownames(pop_data)[infectee_dat$infector], 
+                                     #infectee_id = rownames(infectee_dat), 
+                                     ind_symptom_onset = sorted_so[,1],
+                                     reported_contact_symptom_onset = sorted_so[,2],
+                                     #infector_symptom_onset = infector_dat$time_of_symptom_onset, 
+                                     #infectee_symptom_onset = infectee_dat$time_of_symptom_onset,
                                      time_of_contact_lower = ll_time_window,
                                      time_of_contact_upper = ul_time_window)
   
