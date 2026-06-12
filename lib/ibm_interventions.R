@@ -325,6 +325,25 @@ current_date <- nrow(final_health_time_data$log_health)
 # add time stamp to the population data
 final_pop_data$time <- current_date
 
+# Fix time of hospitalization
+final_pop_data$time_of_hospitalization <- NA
+
+nsymptoms <- sum(!is.na(final_pop_data$time_of_symptom_onset))
+is_hospitalized <- rbinom(nsymptoms, 
+                          size = 1, prob = params$prob_hospital) == 1
+hospitalization_times <- sample(1:4, size = nsymptoms, replace = T, prob = c(0.275, 0.525, 0.125, 0.075))
+hospitalization_times[!is_hospitalized] <- NA
+final_pop_data$time_of_hospitalization[!is.na(final_pop_data$time_of_symptom_onset)] <- 
+  final_pop_data$time_of_symptom_onset[!is.na(final_pop_data$time_of_symptom_onset)] + hospitalization_times
+death_times <- pmin(final_pop_data$time_of_natural_death,
+                    final_pop_data$time_of_death, na.rm = T)                                                                                  
+final_pop_data$time_of_hospitalization <- ifelse(is.na(death_times), 
+                                                  final_pop_data$time_of_hospitalization, 
+                                                  ifelse(is.na(final_pop_data$time_of_hospitalization), 
+                                                         final_pop_data$time_of_hospitalization, 
+                                                         ifelse(death_times < final_pop_data$time_of_hospitalization, death_times, final_pop_data$time_of_hospitalization)))
+head(final_pop_data)
+
 # explore population output
 saveRDS(final_pop_data,
         file = file.path(health_time_data$params$output_dir, "final_pop_data.rds"))
