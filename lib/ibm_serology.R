@@ -52,7 +52,9 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
   ## Serological data ---
   # ------------------------ - 
   age_group <- vector(length = sero_params$n)
+  time_of_seroconversion <- vector(length = sero_params$n)
   status <- vector(length = sero_params$n)
+  true_status <- vector(length = sero_params$n)
   ab_titer <- vector(length = sero_params$n)
   toi <- vector(length = sero_params$n)
   tso <- vector(length = sero_params$n)
@@ -77,7 +79,10 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
     tsv[i] <- ifelse(is.na(tov[i]), -10, sero_params$sampling_time - tov[i])
     
     # serostatus depending on whether someone is infected or vaccinated  
-    status[i] = as.numeric(tsi[i] >= 0 | tsv[i] >= 0) 
+    # seroconversion for individuals within 5 days following infection
+    time_of_seroconversion[i] = sample(1:5, size = 1, prob = c(0.025, 0.075, 0.4, 0.3, 0.2))
+    status[i] = as.numeric((tsi[i] - time_of_seroconversion[i]) >= 0 | (tsv[i] - time_of_seroconversion[i]) >= 0) 
+    true_status[i] = as.numeric(tsi[i] >= 0 | tsv[i]  >= 0) 
     
     # antibody titer data in the presence of vaccination
     if (tsv[i] < 0){
@@ -108,7 +113,8 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
                           #time_of_infection = toi, 
                           #time_since_infection = ifelse(tsi < 0, NA, tsi/365),
                           #time_since_symptom_onset = ifelse(tsso < 0, NA, tsso/365),
-                          #sero_status = status, 
+                          #sero_status = status,
+                          #true_status = true_status,
                           log_igg = ab_titer,
                           time_of_sampling = sero_params$sampling_time)
 
