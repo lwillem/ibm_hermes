@@ -47,7 +47,7 @@ sample_contact_tracing_data <- function(pop_data, contact_tracing_params, verbos
   # ---------------------------------- -
   if (contact_tracing_params$design == "independent"){
     infectee_dat <- ss_pop_data[sample(nrow(ss_pop_data), size = contact_tracing_params$n), ]
-    infector_dat <- pop_data[infectee_dat$infector, ]
+    infector_dat <- ss_pop_data[infectee_dat$infector, ]
   }
   
   if (contact_tracing_params$design == "chains"){
@@ -68,6 +68,15 @@ sample_contact_tracing_data <- function(pop_data, contact_tracing_params, verbos
     infector_dat <- pop_data[infectee_dat$infector, ]
   }
   
+  ## Create noisy observations for probable time of contact
+  #-------------------------------------------------------- -
+  is_censored <- rbinom(nrow(infectee_dat), size = 1, prob = contact_tracing_params$cens_prob)
+  ll_time_window <- infectee_dat$time_of_infection - is_censored*sample(c(1,2,3), size = nrow(infectee_dat), 
+                                                                        replace = TRUE, prob = c(0.4, 0.4, 0.2))
+  ul_time_window <- infectee_dat$time_of_infection + is_censored*sample(c(1,2,3), size = nrow(infectee_dat), 
+                                                                          replace = TRUE, prob = c(0.4, 0.4, 0.2))
+  
+  
   ## Output ----
   # -------------------------- -
   contact_tracing_data <- data.frame(time = contact_tracing_params$end_contact_tracing,
@@ -76,7 +85,9 @@ sample_contact_tracing_data <- function(pop_data, contact_tracing_params, verbos
                                      infector_symptom_onset = infector_dat$time_of_symptom_onset, 
                                      infectee_symptom_onset = infectee_dat$time_of_symptom_onset,
                                      infector_age = infector_dat$age, 
-                                     infectee_age = infectee_dat$age)
+                                     infectee_age = infectee_dat$age,
+                                     time_of_contact_lower = ll_time_window,
+                                     time_of_contact_upper = ul_time_window)
   
   saveRDS(contact_tracing_data,
           file = file.path(contact_tracing_params$output_dir, "contact_tracing_data.rds"))

@@ -35,5 +35,5 @@ obtain_demographic_data <- function(pop_data) {
                                                       "workplace_id")),
                                  time = rep(0, length(ind_id)))
   
-  return(list(demographic_data = demographic_data))
+  return(demographic_data = demographic_data)
 }

@@ -465,6 +465,9 @@ sero_params2$sampling_time <- 20
 sero_params3 <- sero_params1
 sero_params3$sampling_time <- 30
 
+sero_params4 <- sero_params1
+sero_params4$sampling_time <- 40
+
 # Serological data generation
 sero_results1 <- sample_serological_data(final_pop_data, sero_params1, verbose = TRUE)
 final_sero_data1 <- sero_results1$sero_data 
@@ -478,6 +481,10 @@ sero_results3 <- sample_serological_data(final_pop_data, sero_params3, verbose =
 final_sero_data3 <- sero_results3$sero_data 
 final_sero_data3$time_of_sampling <- sero_params3$sampling_time
 
+sero_results4 <- sample_serological_data(final_pop_data, sero_params4, verbose = TRUE)
+final_sero_data4 <- sero_results4$sero_data 
+final_sero_data4$time_of_sampling <- sero_params4$sampling_time
+
 # store final contact tracing data output
 saveRDS(final_sero_data1,
         file = file.path(sero_params1$output_dir, "final_sero_data_time10.rds"))
@@ -485,9 +492,12 @@ saveRDS(final_sero_data2,
         file = file.path(sero_params2$output_dir, "final_sero_data_time20.rds"))
 saveRDS(final_sero_data3,
         file = file.path(sero_params3$output_dir, "final_sero_data_time30.rds"))
+saveRDS(final_sero_data4,
+        file = file.path(sero_params4$output_dir, "final_sero_data_time40.rds"))
 
 # visualization of the seroprevalence by age group 
-final_sero_data = rbind(final_sero_data1, final_sero_data2, final_sero_data3)
+final_sero_data = rbind(final_sero_data1, final_sero_data2, 
+                        final_sero_data3, final_sero_data4)
 saveRDS(final_sero_data,
         file = file.path(sero_params1$output_dir, "final_sero_data.rds"))
 head(final_sero_data)
@@ -579,4 +589,3 @@ head(final_vaccination_data)
 # store final mortality data output
 saveRDS(final_vaccination_data,
         file = file.path(params$output_dir, "final_vaccination_data.rds"))
-

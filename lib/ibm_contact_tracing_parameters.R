@@ -20,11 +20,14 @@ get_default_contact_tracing_parameters <- function() {
   
   params <- list(
     # number of infector-infectee pairs
-    n              = 50,
+    n              = 200,
     
     # contact tracing window
-    start_contact_tracing  = 10,
-    end_contact_tracing  = 20,
+    start_contact_tracing  = 0,
+    end_contact_tracing  = 30,
+    
+    # probable time of contact
+    cens_prob = 0.6,
     
     # sampling design
     design = "chains",

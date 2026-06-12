@@ -80,7 +80,7 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
     status[i] = as.numeric(tsi[i] >= 0 | tsv[i] >= 0) 
     
     # antibody titer data in the presence of vaccination
-    if (ss_pop_data[sample_ids[i], "health"] != "V"){
+    if (tsv[i] < 0){
       ab_titer[i] = status[i]*max(sero_params$LLOD, 
                                   rnorm(1, mean = sero_params$peak*exp(-sero_params$decay*tsi[i]), 
                                         sd = sero_params$sigma2)) + 
@@ -88,9 +88,16 @@ sample_serological_data <- function(pop_data, sero_params, verbose) {
                                         rnorm(1, mean = sero_params$LLOD + sero_params$seroneg_offset, 
                                               sd = sero_params$sigma1))
     } else {
-      ab_titer[i] = max(sero_params$LLOD, 
-                        rnorm(1, mean = sero_params$peak*exp(-sero_params$decay*tsv[i]), 
-                              sd = sero_params$sigma2))
+      ab_titer[i] = status[i]*max(sero_params$LLOD, 
+                                  rnorm(1, mean = sero_params$peak*exp(-sero_params$decay*tsv[i]), 
+                                        sd = sero_params$sigma2)) + 
+                    (1 - status[i])*max(sero_params$LLOD, 
+                            rnorm(1, mean = sero_params$LLOD + sero_params$seroneg_offset, 
+                                  sd = sero_params$sigma1))
+      
+      #ab_titer[i] = max(sero_params$LLOD, 
+      #                  rnorm(1, mean = sero_params$peak*exp(-sero_params$decay*tsv[i]), 
+      #                        sd = sero_params$sigma2))
     }
   }
   
