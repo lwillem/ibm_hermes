@@ -42,12 +42,12 @@ params$num_days <- 20
 params$num_infected_seeds <- 10
 params$bool_add_baseline  <- TRUE
 params$general_mortality_rate <- NULL
-params$pop_size <- 5e4
+params$pop_size <- 2e5
 
 params$vaccine_coverage <- 0
 params$vaccine_effectiveness <- 0
 
-params$transmission_prob <- 0.06
+params$transmission_prob <- 0.0625
 
 params$output_dir = "output/ibm_final"
 
