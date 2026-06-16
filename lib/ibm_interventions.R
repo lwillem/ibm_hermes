@@ -71,6 +71,7 @@ health_time_file <- file.path(ibm_results$params$output_dir,'health_time.rds')
 health_time_data <- readRDS(health_time_file)
 dim(health_time_data)
 head(health_time_data$log_health)
+head(pop_data)
 
 # ------------------------------------------------------------------------ -
 # PHASE 2: FULL LOCKDOWN IMPOSED OVER 7 DAY PERIOD (DAY 20) ----

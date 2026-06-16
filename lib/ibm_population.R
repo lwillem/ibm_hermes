@@ -20,7 +20,8 @@ create_population_matrix <- function(params) {
 
   adult1 <- data.frame(
     age = sample(params$ages_adult, num_households, replace = TRUE),
-    sex = sample(c("Female", "Male"), size = 1, prob = c(0.508, 0.492), replace = TRUE),
+    sex = sample(c("Female", "Male"), num_households, prob = c(0.508, 0.492), 
+                 replace = TRUE),
     hh_id = seq_len(num_households),
     hh_role = 1
   )
@@ -29,7 +30,8 @@ create_population_matrix <- function(params) {
     age = adult1$age +
       sample(-params$adult_age_tolerance:params$adult_age_tolerance,
              num_households, replace = TRUE),
-    sex = sample(c("Female", "Male"), size = 1, prob = c(0.508, 0.492), replace = TRUE),
+    sex = sample(c("Female", "Male"), num_households, 
+                 prob = c(0.508, 0.492), replace = TRUE),
     hh_id = seq_len(num_households),
     hh_role = 2
   )
@@ -37,7 +39,8 @@ create_population_matrix <- function(params) {
   child1 <- data.frame(
     age = pmax(adult1$age, adult2$age) -
       sample(params$household_age_gap, num_households, replace = TRUE),
-    sex = sample(c("Female", "Male"), size = 1, prob = c(0.508, 0.492), replace = TRUE),
+    sex = sample(c("Female", "Male"), num_households, 
+                 prob = c(0.508, 0.492), replace = TRUE),
     hh_id = seq_len(num_households),
     hh_role = 3
   )
@@ -45,7 +48,8 @@ create_population_matrix <- function(params) {
   child2 <- data.frame(
     age = child1$age -
       sample(seq_len(params$child_age_tolerance), num_households, replace = TRUE),
-    sex = sample(c("Female", "Male"), size = 1, prob = c(0.508, 0.492), replace = TRUE),
+    sex = sample(c("Female", "Male"), num_households, 
+                 prob = c(0.508, 0.492), replace = TRUE),
     hh_id = seq_len(num_households),
     hh_role = 4
   )
